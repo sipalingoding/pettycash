@@ -44,6 +44,12 @@ export function fmtCount(n: number): string {
   return n.toLocaleString("id-ID");
 }
 
+/** Strips non-digits and re-formats as the user types into a nominal input, e.g. "12000" -> "12.000". */
+export function formatNominalInput(raw: string): string {
+  const digits = raw.replace(/[^\d]/g, "");
+  return digits ? Number(digits).toLocaleString("id-ID") : "";
+}
+
 /** Date -> "Sabtu, 22 Agustus 2026" */
 export function hariTanggal(date: Date): string {
   return `${DAYS_LONG[date.getDay()]}, ${date.getDate()} ${MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`;

@@ -1,5 +1,6 @@
 import { DecorBackground } from "@/components/decor-background";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { UserMenu } from "@/components/user-menu";
 import { getAggregates, getDivisionNames } from "@/db/queries";
 
 // This whole subtree reads live data on every request — never prerender it at build time,
@@ -10,7 +11,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const [agg, divisionNames] = await Promise.all([getAggregates(), getDivisionNames()]);
 
   return (
-    <div className="relative flex min-h-screen">
+    <div className="relative flex min-h-screen flex-col md:flex-row">
       <DecorBackground />
       <SidebarNav
         transactionCount={agg.count}
@@ -18,6 +19,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         divisionCount={divisionNames.length}
         balance={agg.currentBalance}
       />
+      <UserMenu />
       <main className="relative z-10 min-w-0 flex-1 px-5 py-7 sm:px-9 sm:py-8">{children}</main>
     </div>
   );

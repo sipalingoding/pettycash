@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -54,7 +54,8 @@ export function DeleteCategoryButton({ name, count }: { name: string; count: num
         <AlertDialogFooter>
           <AlertDialogCancel>Batal</AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={pending}>
-            Hapus
+            {pending && <Loader2 className="size-4 animate-spin" />}
+            {pending ? "Menghapus…" : "Hapus"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

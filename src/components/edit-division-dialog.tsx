@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pencil } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,6 +79,7 @@ export function EditDivisionDialog({ id, currentName }: { id: number; currentNam
 
         <DialogFooter>
           <Button onClick={handleSubmit} disabled={pending}>
+            {pending && <Loader2 className="size-4 animate-spin" />}
             {pending ? "Menyimpan…" : "Simpan Perubahan"}
           </Button>
         </DialogFooter>

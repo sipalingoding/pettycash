@@ -185,6 +185,15 @@
   .font-variant-tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Keeps the element scrollable while hiding the visual scrollbar track. */
+  .scrollbar-hidden {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes leaf-sway {

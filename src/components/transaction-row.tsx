@@ -2,9 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Check, Paperclip, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Paperclip, Pencil, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -18,30 +17,29 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { TransactionDetailSheet } from "@/components/transaction-detail-sheet";
-import { deleteTransactionAction, updateTransactionAction } from "@/lib/actions";
+import { deleteTransactionAction } from "@/lib/actions";
 import { categoryColor, UNCATEGORIZED } from "@/lib/categories";
 import { divisionColor } from "@/lib/divisions";
 import { rp, tgl } from "@/lib/format";
 import type { Transaction } from "@/db/schema";
 import { cn } from "@/lib/utils";
 
-export function TransactionRow({ tx }: { tx: Transaction }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(tx.description);
+export function TransactionRow({
+  tx,
+  categoryOptions,
+  divisionOptions,
+}: {
+  tx: Transaction;
+  categoryOptions: string[];
+  divisionOptions: string[];
+}) {
   const [detailOpen, setDetailOpen] = useState(false);
+  const [startInEdit, setStartInEdit] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function saveEdit() {
-    if (!draft.trim()) return;
-    startTransition(async () => {
-      const result = await updateTransactionAction({ txNo: tx.txNo, description: draft });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Keterangan diperbarui.");
-      setEditing(false);
-    });
+  function openDetail(edit: boolean) {
+    setStartInEdit(edit);
+    setDetailOpen(true);
   }
 
   function handleDelete() {
@@ -63,32 +61,13 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
         <TableCell className="text-muted-foreground font-variant-tabular">{tx.txNo}</TableCell>
         <TableCell className="text-muted-foreground whitespace-nowrap">{tgl(tx.date)}</TableCell>
         <TableCell className="max-w-[280px]">
-          {editing ? (
-            <div className="flex items-center gap-1.5">
-              <Input
-                autoFocus
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-                className="h-8"
-              />
-              <button
-                onClick={saveEdit}
-                disabled={pending}
-                className="flex size-7 shrink-0 items-center justify-center rounded-lg text-income-foreground hover:bg-income/15"
-              >
-                <Check className="size-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setDetailOpen(true)}
-              className="block w-full truncate text-left hover:text-primary"
-              title={tx.description || "(tanpa keterangan)"}
-            >
-              {tx.description || "(tanpa keterangan)"}
-            </button>
-          )}
+          <button
+            onClick={() => openDetail(false)}
+            className="block w-full truncate text-left hover:text-primary"
+            title={tx.description || "(tanpa keterangan)"}
+          >
+            {tx.description || "(tanpa keterangan)"}
+          </button>
         </TableCell>
         <TableCell>
           <Badge
@@ -123,7 +102,7 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
         <TableCell className="text-right font-variant-tabular font-medium">{rp(tx.balance)}</TableCell>
         <TableCell className="text-center">
           <button
-            onClick={() => setDetailOpen(true)}
+            onClick={() => openDetail(false)}
             className={cn(
               "mx-auto flex size-7 items-center justify-center rounded-lg border",
               tx.attachmentUrl ? "border-secondary bg-secondary text-accent-foreground" : "border-border text-muted-foreground"
@@ -133,48 +112,54 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
           </button>
         </TableCell>
         <TableCell>
-          {!editing && (
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-              <button
-                onClick={() => setEditing(true)}
-                className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
-                title="Edit di baris"
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+            <button
+              onClick={() => openDetail(true)}
+              className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
+              title="Edit transaksi"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <button
+                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                    title="Hapus transaksi"
+                  />
+                }
               >
-                <Pencil className="size-3.5" />
-              </button>
-              <AlertDialog>
-                <AlertDialogTrigger
-                  render={
-                    <button
-                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                      title="Hapus transaksi"
-                    />
-                  }
-                >
-                  <Trash2 className="size-3.5" />
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Hapus transaksi #{tx.txNo}?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      &ldquo;{tx.description || "(tanpa keterangan)"}&rdquo; akan dihapus permanen dan saldo
-                      transaksi berikutnya akan dihitung ulang. Tindakan ini tidak bisa dibatalkan.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={pending}>
-                      Hapus
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
+                <Trash2 className="size-3.5" />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus transaksi #{tx.txNo}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    &ldquo;{tx.description || "(tanpa keterangan)"}&rdquo; akan dihapus permanen dan saldo
+                    transaksi berikutnya akan dihitung ulang. Tindakan ini tidak bisa dibatalkan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={pending}>
+                    {pending && <Loader2 className="size-4 animate-spin" />}
+                    {pending ? "Menghapus…" : "Hapus"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </TableCell>
       </TableRow>
 
-      <TransactionDetailSheet tx={tx} open={detailOpen} onOpenChange={setDetailOpen} />
+      <TransactionDetailSheet
+        tx={tx}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        startInEdit={startInEdit}
+        categoryOptions={categoryOptions}
+        divisionOptions={divisionOptions}
+      />
     </>
   );
 }

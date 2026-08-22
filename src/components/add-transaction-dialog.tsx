@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,16 +27,11 @@ import { PhotoUpload } from "@/components/photo-upload";
 import { createTransactionAction } from "@/lib/actions";
 import { UNCATEGORIZED } from "@/lib/categories";
 import { UNASSIGNED_DIVISION } from "@/lib/divisions";
-import { rp } from "@/lib/format";
+import { formatNominalInput, rp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function formatNominal(raw: string) {
-  const digits = raw.replace(/[^\d]/g, "");
-  return digits ? Number(digits).toLocaleString("id-ID") : "";
 }
 
 export function AddTransactionDialog({
@@ -120,7 +116,7 @@ export function AddTransactionDialog({
         <div className="grid gap-4 py-2 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label htmlFor="tx-date">Tanggal</Label>
-            <Input id="tx-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DatePicker value={date} onChange={setDate} />
           </div>
 
           <div className="grid gap-1.5">
@@ -194,7 +190,7 @@ export function AddTransactionDialog({
                 inputMode="numeric"
                 placeholder="0"
                 value={nominalDisplay}
-                onChange={(e) => setNominalDisplay(formatNominal(e.target.value))}
+                onChange={(e) => setNominalDisplay(formatNominalInput(e.target.value))}
                 className="w-full bg-transparent py-1.5 font-variant-tabular text-base outline-none"
               />
             </div>
@@ -216,6 +212,7 @@ export function AddTransactionDialog({
             Saldo setelah entri ini: <span className="font-medium text-foreground">{rp(preview)}</span>
           </p>
           <Button onClick={handleSubmit} disabled={pending}>
+            {pending && <Loader2 className="size-4 animate-spin" />}
             {pending ? "Menyimpan…" : "Simpan Transaksi"}
           </Button>
         </DialogFooter>

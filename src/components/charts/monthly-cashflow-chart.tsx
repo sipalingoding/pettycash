@@ -1,6 +1,7 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Rectangle, XAxis } from "recharts";
+import type { BarShapeProps } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -14,6 +15,24 @@ const chartConfig = {
   amountIn: { label: "Pemasukan", color: "var(--color-income)" },
   amountOut: { label: "Pengeluaran", color: "var(--color-primary)" },
 } satisfies ChartConfig;
+
+// Lifts the hovered bar off the baseline with a soft shadow underneath it, so the
+// reader sees the bar itself "pop" instead of relying only on the tooltip.
+const LIFT = 6;
+function ActiveBar({ x, y, width, height, fill, radius }: BarShapeProps) {
+  return (
+    <g style={{ filter: "brightness(1.05) drop-shadow(0 8px 10px rgba(0,0,0,0.22))" }}>
+      <Rectangle
+        x={x as number}
+        y={(y as number) - LIFT}
+        width={width}
+        height={height}
+        fill={fill}
+        radius={radius}
+      />
+    </g>
+  );
+}
 
 export function MonthlyCashflowChart({ months }: { months: MonthStat[] }) {
   const data = months.map((m) => ({
@@ -44,8 +63,8 @@ export function MonthlyCashflowChart({ months }: { months: MonthStat[] }) {
             />
           }
         />
-        <Bar dataKey="amountIn" fill="var(--color-amountIn)" radius={[6, 6, 2, 2]} />
-        <Bar dataKey="amountOut" fill="var(--color-amountOut)" radius={[6, 6, 2, 2]} />
+        <Bar dataKey="amountIn" fill="var(--color-amountIn)" radius={[6, 6, 2, 2]} activeBar={ActiveBar} />
+        <Bar dataKey="amountOut" fill="var(--color-amountOut)" radius={[6, 6, 2, 2]} activeBar={ActiveBar} />
       </BarChart>
     </ChartContainer>
   );

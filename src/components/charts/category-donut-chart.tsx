@@ -1,10 +1,45 @@
 "use client";
 
-import { Cell, Pie, PieChart } from "recharts";
-import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
+import { useState } from "react";
+import { Cell, Pie, PieChart, Sector } from "recharts";
+import type { PieSectorShapeProps } from "recharts";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { categoryColor, UNCATEGORIZED } from "@/lib/categories";
 import { rp } from "@/lib/format";
 import type { CategoryStat } from "@/db/queries";
+
+// Pops the hovered slice outward with a soft shadow, so the ring itself responds —
+// the center readout (below) swaps to that slice's data at the same time.
+function ActiveSlice({
+  isActive,
+  cx,
+  cy,
+  innerRadius,
+  outerRadius,
+  startAngle,
+  endAngle,
+  cornerRadius,
+  fill,
+  stroke,
+  strokeWidth,
+}: PieSectorShapeProps) {
+  return (
+    <g style={isActive ? { filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.28))" } : undefined}>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={isActive ? (outerRadius as number) + 6 : outerRadius}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        cornerRadius={cornerRadius}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+      />
+    </g>
+  );
+}
 
 export function CategoryDonutChart({
   categories,
@@ -13,6 +48,8 @@ export function CategoryDonutChart({
   categories: CategoryStat[];
   totalCategoryCount: number;
 }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+
   const top = categories.slice(0, 6);
   const rest = categories.slice(6).reduce((sum, c) => sum + c.amountOut, 0);
   const entries = top.map((c) => ({ name: c.category, value: c.amountOut, isRest: false }));
@@ -23,34 +60,25 @@ export function CategoryDonutChart({
     entries.map((e) => [e.name, { label: e.name }])
   ) satisfies ChartConfig;
 
+  const active = hovered !== null ? entries[hovered] : null;
+  const activePct = active ? ((active.value / total) * 100).toFixed(1).replace(".", ",") : null;
+
   return (
     <div className="flex flex-wrap items-center gap-6">
-      <div className="relative size-[150px] shrink-0">
-        <ChartContainer config={chartConfig} className="aspect-square size-[150px]">
+      <div className="relative size-[220px] shrink-0">
+        <ChartContainer config={chartConfig} className="aspect-square size-[220px]">
           <PieChart>
-            <ChartTooltip
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const p = payload[0];
-                const pct = (((p.value as number) / total) * 100).toFixed(1).replace(".", ",");
-                return (
-                  <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
-                    <div className="font-medium text-popover-foreground">{p.name}</div>
-                    <div className="text-muted-foreground">
-                      {rp(p.value as number)} &middot; {pct}%
-                    </div>
-                  </div>
-                );
-              }}
-            />
             <Pie
               data={entries}
               dataKey="value"
               nameKey="name"
-              innerRadius={46}
-              outerRadius={72}
+              innerRadius={68}
+              outerRadius={106}
               strokeWidth={2}
               stroke="var(--card)"
+              shape={ActiveSlice}
+              onMouseEnter={(_, index) => setHovered(index)}
+              onMouseLeave={() => setHovered(null)}
             >
               {entries.map((e) => (
                 <Cell
@@ -61,9 +89,22 @@ export function CategoryDonutChart({
             </Pie>
           </PieChart>
         </ChartContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <div className="font-heading text-lg font-semibold">{totalCategoryCount}</div>
-          <div className="text-[10px] tracking-wide text-muted-foreground uppercase">Kategori</div>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+          {active ? (
+            <>
+              <div className="font-heading text-lg leading-snug font-semibold text-balance">
+                {rp(active.value)}
+              </div>
+              <div className="mt-1 max-w-full truncate text-xs tracking-wide text-muted-foreground uppercase">
+                {active.name} &middot; {activePct}%
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="font-heading text-3xl font-semibold">{totalCategoryCount}</div>
+              <div className="text-xs tracking-wide text-muted-foreground uppercase">Kategori</div>
+            </>
+          )}
         </div>
       </div>
 

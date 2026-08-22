@@ -1,18 +1,35 @@
 import { Wallet, TrendingUp, TrendingDown, Target } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
+import { PrintReportDialog } from "@/components/print-report-dialog";
+import { YearFilter } from "@/components/year-filter";
 import { StatCard } from "@/components/stat-card";
 import { MonthlyCashflowChart } from "@/components/charts/monthly-cashflow-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 import { Card } from "@/components/ui/card";
-import { getAggregates, getCategoryNames, getDivisionNames } from "@/db/queries";
+import {
+  getAggregates,
+  getAvailableYears,
+  getCategoryNames,
+  getCurrentBalance,
+  getDivisionNames,
+} from "@/db/queries";
 import { rp, fmtCount, tglPanjang, monthShort } from "@/lib/format";
 
-export default async function DashboardPage() {
-  const [agg, categoryOptions, divisionOptions] = await Promise.all([
-    getAggregates(),
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const year = typeof sp.year === "string" ? sp.year : "Semua";
+
+  const [agg, categoryOptions, divisionOptions, years, currentBalance] = await Promise.all([
+    getAggregates(year),
     getCategoryNames(),
     getDivisionNames(),
+    getAvailableYears(),
+    getCurrentBalance(),
   ]);
   const avgMonthly = agg.months.length ? agg.totalOut / agg.months.length : 0;
   const periodLabel = agg.months.length
@@ -22,8 +39,10 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader kicker="Ringkasan Keuangan" title="Halo, selamat datang kembali">
+        <YearFilter years={years} />
+        <PrintReportDialog />
         <AddTransactionDialog
-          currentBalance={agg.currentBalance}
+          currentBalance={currentBalance}
           categoryOptions={categoryOptions}
           divisionOptions={divisionOptions}
         />
@@ -59,7 +78,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.5fr_1fr]">
+      <div className="mt-4 grid grid-cols-1 gap-4">
         <Card className="gap-0 rounded-[22px] border-border p-6">
           <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="font-heading text-lg font-semibold">Arus Kas Bulanan</h2>

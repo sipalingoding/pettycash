@@ -1,16 +1,32 @@
 import { PageHeader } from "@/components/page-header";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
+import { YearFilter } from "@/components/year-filter";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAggregates, getCategoryNames, getDivisionNames } from "@/db/queries";
+import {
+  getAggregates,
+  getAvailableYears,
+  getCategoryNames,
+  getCurrentBalance,
+  getDivisionNames,
+} from "@/db/queries";
 import { rp, signedRp, fmtCount, monthLong } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export default async function LaporanPage() {
-  const [agg, categoryOptions, divisionOptions] = await Promise.all([
-    getAggregates(),
+export default async function LaporanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const year = typeof sp.year === "string" ? sp.year : "Semua";
+
+  const [agg, categoryOptions, divisionOptions, years, currentBalance] = await Promise.all([
+    getAggregates(year),
     getCategoryNames(),
     getDivisionNames(),
+    getAvailableYears(),
+    getCurrentBalance(),
   ]);
   const totalSelisih = agg.totalIn - agg.totalOut;
   const periodLabel = agg.months.length
@@ -20,8 +36,9 @@ export default async function LaporanPage() {
   return (
     <>
       <PageHeader kicker="Rekapitulasi" title="Laporan Bulanan">
+        <YearFilter years={years} />
         <AddTransactionDialog
-          currentBalance={agg.currentBalance}
+          currentBalance={currentBalance}
           categoryOptions={categoryOptions}
           divisionOptions={divisionOptions}
         />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Building2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,6 +81,7 @@ export function AddDivisionDialog() {
 
         <DialogFooter>
           <Button onClick={handleSubmit} disabled={pending}>
+            {pending && <Loader2 className="size-4 animate-spin" />}
             {pending ? "Menyimpan…" : "Simpan Divisi"}
           </Button>
         </DialogFooter>
