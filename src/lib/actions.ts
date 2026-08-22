@@ -16,12 +16,12 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const SESSION_COOKIE = "session";
 
-export async function loginAction(email: string, password: string): Promise<ActionResult> {
-  if (!email.trim() || !password) {
-    return { ok: false, error: "Email dan password wajib diisi." };
+export async function loginAction(username: string, password: string): Promise<ActionResult> {
+  if (!username.trim() || !password) {
+    return { ok: false, error: "Username dan password wajib diisi." };
   }
-  if (!verifyCredentials(email, password)) {
-    return { ok: false, error: "Email atau password salah." };
+  if (!verifyCredentials(username, password)) {
+    return { ok: false, error: "Username atau password salah." };
   }
 
   const cookieStore = await cookies();

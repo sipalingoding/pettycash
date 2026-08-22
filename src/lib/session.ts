@@ -61,14 +61,14 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   return timingSafeStringEqual(candidate, hash);
 }
 
-export function verifyCredentials(email: string, password: string): boolean {
-  const validEmail = process.env.AUTH_EMAIL;
+export function verifyCredentials(username: string, password: string): boolean {
+  const validUsername = process.env.AUTH_USERNAME;
   const validHash = process.env.AUTH_PASSWORD_HASH;
-  if (!validEmail || !validHash) {
+  if (!validUsername || !validHash) {
     throw new Error(
-      "AUTH_EMAIL / AUTH_PASSWORD_HASH belum diset di .env.local. Jalankan `npm run auth:hash -- <password>` untuk membuat hash-nya."
+      "AUTH_USERNAME / AUTH_PASSWORD_HASH belum diset di .env.local. Jalankan `npm run auth:hash -- <password>` untuk membuat hash-nya."
     );
   }
-  const emailMatches = email.trim().toLowerCase() === validEmail.trim().toLowerCase();
-  return emailMatches && verifyPassword(password, validHash);
+  const usernameMatches = username.trim().toLowerCase() === validUsername.trim().toLowerCase();
+  return usernameMatches && verifyPassword(password, validHash);
 }

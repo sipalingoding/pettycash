@@ -12,7 +12,7 @@ import { loginAction } from "@/lib/actions";
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await loginAction(email, password);
+      const result = await loginAction(username, password);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -34,14 +34,14 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     <Card className="gap-6 rounded-[26px] border-border p-8">
       <form onSubmit={handleSubmit} className="grid gap-5">
         <div className="grid gap-1.5">
-          <Label htmlFor="login-email">Email</Label>
+          <Label htmlFor="login-username">Username</Label>
           <Input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            placeholder="nama@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="login-username"
+            type="text"
+            autoComplete="username"
+            placeholder="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
             autoFocus
             className="h-11 text-base"
