@@ -49,7 +49,6 @@ async function main() {
     amountIn: r.in,
     amountOut: r.out,
     balance: r.s,
-    attachmentUrl: null,
   }));
 
   const BATCH_SIZE = 200;

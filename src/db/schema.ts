@@ -31,7 +31,6 @@ export const transactions = pgTable(
       .default(0),
     // running balance snapshot at the time of this transaction
     balance: numeric("balance", { precision: 14, scale: 2, mode: "number" }).notNull(),
-    attachmentUrl: text("attachment_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -44,6 +43,22 @@ export const transactions = pgTable(
 
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
+
+export const transactionAttachments = pgTable(
+  "transaction_attachments",
+  {
+    id: serial("id").primaryKey(),
+    transactionId: integer("transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("transaction_attachments_transaction_id_idx").on(table.transactionId)]
+);
+
+export type TransactionAttachment = typeof transactionAttachments.$inferSelect;
+export type NewTransactionAttachment = typeof transactionAttachments.$inferInsert;
 
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),

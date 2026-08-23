@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PhotoUpload } from "@/components/photo-upload";
-import { createTransactionAction } from "@/lib/actions";
+import { addAttachmentAction, createTransactionAction } from "@/lib/actions";
 import { UNCATEGORIZED } from "@/lib/categories";
 import { UNASSIGNED_DIVISION } from "@/lib/divisions";
 import { formatNominalInput, rp } from "@/lib/format";
@@ -52,7 +52,7 @@ export function AddTransactionDialog({
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"masuk" | "keluar">("keluar");
   const [nominalDisplay, setNominalDisplay] = useState("");
-  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<{ key: string; file: File; previewUrl: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const nominal = Number(nominalDisplay.replace(/[^\d]/g, "")) || 0;
@@ -65,7 +65,10 @@ export function AddTransactionDialog({
     setDescription("");
     setType("keluar");
     setNominalDisplay("");
-    setAttachmentUrl(null);
+    setPhotos((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      return [];
+    });
     setError(null);
   }
 
@@ -79,12 +82,19 @@ export function AddTransactionDialog({
         division,
         type,
         nominal,
-        attachmentUrl,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
+
+      for (const photo of photos) {
+        const attachResult = await addAttachmentAction(result.txNo, photo.file);
+        if (!attachResult.ok) {
+          toast.error(`Gagal melampirkan ${photo.file.name}: ${attachResult.error}`);
+        }
+      }
+
       toast.success("Transaksi tersimpan.");
       setOpen(false);
       reset();
@@ -197,8 +207,27 @@ export function AddTransactionDialog({
           </div>
 
           <div className="grid gap-1.5 sm:col-span-2">
-            <Label>Lampiran foto struk (opsional)</Label>
-            <PhotoUpload value={attachmentUrl} onChange={setAttachmentUrl} />
+            <Label>Lampiran foto struk (opsional, bisa lebih dari satu)</Label>
+            <PhotoUpload
+              photos={photos.map((p) => ({ key: p.key, url: p.previewUrl }))}
+              onAdd={(files) =>
+                setPhotos((prev) => [
+                  ...prev,
+                  ...files.map((file) => ({
+                    key: crypto.randomUUID(),
+                    file,
+                    previewUrl: URL.createObjectURL(file),
+                  })),
+                ])
+              }
+              onRemove={(key) =>
+                setPhotos((prev) => {
+                  const target = prev.find((p) => p.key === key);
+                  if (target) URL.revokeObjectURL(target.previewUrl);
+                  return prev.filter((p) => p.key !== key);
+                })
+              }
+            />
             <p className="text-xs text-muted-foreground">
               Foto disimpan langsung bersama data transaksi.
             </p>

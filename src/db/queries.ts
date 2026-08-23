@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, gte, ilike, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { db } from "./index";
-import { categories, divisions, transactions } from "./schema";
+import { categories, divisions, transactionAttachments, transactions } from "./schema";
+import type { Transaction, TransactionAttachment } from "./schema";
 
 export type CategoryStat = {
   category: string;
@@ -177,14 +178,62 @@ export async function getTransactions(params: TransactionListParams) {
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
-  return { rows, total: total ?? 0 };
+  const attachmentCounts = await getAttachmentCounts(rows.map((r) => r.id));
+  const rowsWithAttachments: TransactionListRow[] = rows.map((r) => ({
+    ...r,
+    attachmentCount: attachmentCounts.get(r.id) ?? 0,
+  }));
+
+  return { rows: rowsWithAttachments, total: total ?? 0 };
 }
 
-export async function getTransactionByNo(txNo: number) {
+export type TransactionListRow = Transaction & { attachmentCount: number };
+
+/** Attachment counts keyed by transaction id, for the "Lampiran" list indicator. */
+async function getAttachmentCounts(transactionIds: number[]): Promise<Map<number, number>> {
+  if (transactionIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      transactionId: transactionAttachments.transactionId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(transactionAttachments)
+    .where(inArray(transactionAttachments.transactionId, transactionIds))
+    .groupBy(transactionAttachments.transactionId);
+  return new Map(rows.map((r) => [r.transactionId, r.count]));
+}
+
+export type TransactionWithAttachments = Transaction & { attachments: TransactionAttachment[] };
+
+export async function getTransactionByNo(txNo: number): Promise<TransactionWithAttachments | null> {
   const [row] = await db
     .select()
     .from(transactions)
     .where(eq(transactions.txNo, txNo))
+    .limit(1);
+  if (!row) return null;
+
+  const attachments = await db
+    .select()
+    .from(transactionAttachments)
+    .where(eq(transactionAttachments.transactionId, row.id))
+    .orderBy(asc(transactionAttachments.id));
+
+  return { ...row, attachments };
+}
+
+/** Single attachment plus its parent transaction's txNo, for the download route and filenames. */
+export async function getAttachmentById(id: number) {
+  const [row] = await db
+    .select({
+      id: transactionAttachments.id,
+      url: transactionAttachments.url,
+      transactionId: transactionAttachments.transactionId,
+      txNo: transactions.txNo,
+    })
+    .from(transactionAttachments)
+    .innerJoin(transactions, eq(transactions.id, transactionAttachments.transactionId))
+    .where(eq(transactionAttachments.id, id))
     .limit(1);
   return row ?? null;
 }

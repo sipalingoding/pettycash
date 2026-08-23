@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Download, ImageOff, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { ImageOff, Loader2, Pencil, Trash2, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoUpload } from "@/components/photo-upload";
+import type { PhotoItem } from "@/components/photo-upload";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,12 +30,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { deleteTransactionAction, removeAttachmentAction, updateTransactionAction } from "@/lib/actions";
+import {
+  addAttachmentAction,
+  deleteTransactionAction,
+  removeAttachmentAction,
+  updateTransactionAction,
+} from "@/lib/actions";
 import { attachmentFilename } from "@/lib/attachment";
 import { categoryColor } from "@/lib/categories";
 import { divisionColor } from "@/lib/divisions";
 import { formatNominalInput, rp, tglPanjang } from "@/lib/format";
-import type { Transaction } from "@/db/schema";
+import type { TransactionWithAttachments } from "@/db/queries";
 import { cn } from "@/lib/utils";
 
 export function TransactionDetailSheet({
@@ -45,14 +51,13 @@ export function TransactionDetailSheet({
   categoryOptions,
   divisionOptions,
 }: {
-  tx: Transaction;
+  tx: TransactionWithAttachments;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   startInEdit?: boolean;
   categoryOptions: string[];
   divisionOptions: string[];
 }) {
-  const [imgError, setImgError] = useState(false);
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(startInEdit);
 
@@ -66,6 +71,8 @@ export function TransactionDetailSheet({
   const [type, setType] = useState<"masuk" | "keluar">(txType);
   const [nominalDisplay, setNominalDisplay] = useState(txNominal.toLocaleString("id-ID"));
   const [error, setError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState(tx.attachments);
+  const [removingIds, setRemovingIds] = useState<number[]>([]);
 
   // Resync local state whenever this sheet is (re)opened for a possibly different/updated
   // row — adjusted during render, not in an effect, per https://react.dev/learn/you-might-not-need-an-effect
@@ -82,22 +89,33 @@ export function TransactionDetailSheet({
       setType(txType);
       setNominalDisplay(txNominal.toLocaleString("id-ID"));
       setError(null);
-      setImgError(false);
+      setAttachments(tx.attachments);
+      setRemovingIds([]);
     }
   }
 
-  function handlePhotoChange(url: string | null) {
-    startTransition(async () => {
-      const result = url
-        ? await updateTransactionAction({ txNo: tx.txNo, attachmentUrl: url })
-        : await removeAttachmentAction(tx.txNo);
+  async function handleAddPhotos(files: File[]) {
+    for (const file of files) {
+      const result = await addAttachmentAction(tx.txNo, file);
       if (!result.ok) {
         toast.error(result.error);
-        return;
+        continue;
       }
-      setImgError(false);
-      toast.success(url ? "Lampiran diperbarui." : "Lampiran dihapus.");
-    });
+      setAttachments((prev) => [...prev, result.attachment]);
+    }
+  }
+
+  async function handleRemovePhoto(key: string) {
+    const id = Number(key);
+    setRemovingIds((prev) => [...prev, id]);
+    const result = await removeAttachmentAction(id);
+    setRemovingIds((prev) => prev.filter((x) => x !== id));
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+    toast.success("Foto dihapus.");
   }
 
   function handleSave() {
@@ -306,46 +324,24 @@ export function TransactionDetailSheet({
           )}
 
           <div>
-            <Label className="mb-2 text-xs text-muted-foreground">Lampiran</Label>
-            <div className="overflow-hidden rounded-2xl border border-border">
-              <div className="flex h-[170px] items-center justify-center bg-muted">
-                {tx.attachmentUrl && !imgError ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={tx.attachmentUrl}
-                    alt={`Lampiran transaksi ${tx.txNo}`}
-                    className="h-full w-full object-contain"
-                    onError={() => setImgError(true)}
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <ImageOff className="size-5" />
-                    <span className="text-xs">
-                      {tx.attachmentUrl ? "Tidak bisa menampilkan pratinjau" : "Belum ada lampiran"}
-                    </span>
-                  </div>
-                )}
+            <Label className="mb-2 text-xs text-muted-foreground">
+              Lampiran{attachments.length > 0 && ` (${attachments.length})`}
+            </Label>
+            {attachments.length === 0 && (
+              <div className="mb-2.5 flex h-16 items-center gap-2 rounded-2xl border border-dashed border-border px-3.5 text-xs text-muted-foreground">
+                <ImageOff className="size-4" />
+                Belum ada lampiran
               </div>
-              {tx.attachmentUrl && (
-                <div className="flex gap-2 border-t border-border p-2.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    nativeButton={false}
-                    render={
-                      <a href={tx.attachmentUrl} download={attachmentFilename(tx.txNo, tx.attachmentUrl)}>
-                        <Download className="size-3.5" />
-                        Unduh
-                      </a>
-                    }
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-2.5">
-              <PhotoUpload value={tx.attachmentUrl} onChange={handlePhotoChange} />
-            </div>
+            )}
+            <PhotoUpload
+              photos={attachments.map((a): PhotoItem => ({ key: String(a.id), url: a.url }))}
+              onAdd={handleAddPhotos}
+              onRemove={handleRemovePhoto}
+              removingKeys={removingIds.map(String)}
+              downloadFilename={(photo, index) =>
+                attachmentFilename(tx.txNo, index + 1, photo.url)
+              }
+            />
           </div>
         </div>
 

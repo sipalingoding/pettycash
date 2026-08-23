@@ -6,7 +6,7 @@ function csvField(v: string | number) {
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
   const cat = searchParams.get("cat") ?? "Semua";
   const year = searchParams.get("year") ?? "Semua";
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
   const lines = ["No,Tanggal,Keterangan,Kategori,Divisi,Pemasukan,Pengeluaran,Saldo,Lampiran"];
   for (const r of rows) {
-    const lampiran = r.attachmentUrl ? `${origin}/api/attachments/${r.txNo}` : "";
+    const lampiran = r.attachmentCount > 0 ? `${r.attachmentCount} foto` : "";
     lines.push(
       [
         r.txNo,

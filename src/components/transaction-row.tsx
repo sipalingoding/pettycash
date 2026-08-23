@@ -17,11 +17,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { TransactionDetailSheet } from "@/components/transaction-detail-sheet";
-import { deleteTransactionAction } from "@/lib/actions";
+import { deleteTransactionAction, getAttachmentsAction } from "@/lib/actions";
 import { categoryColor, UNCATEGORIZED } from "@/lib/categories";
 import { divisionColor } from "@/lib/divisions";
 import { rp, tgl } from "@/lib/format";
-import type { Transaction } from "@/db/schema";
+import type { TransactionListRow } from "@/db/queries";
+import type { TransactionAttachment } from "@/db/schema";
 import { cn } from "@/lib/utils";
 
 export function TransactionRow({
@@ -29,16 +30,22 @@ export function TransactionRow({
   categoryOptions,
   divisionOptions,
 }: {
-  tx: Transaction;
+  tx: TransactionListRow;
   categoryOptions: string[];
   divisionOptions: string[];
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [startInEdit, setStartInEdit] = useState(false);
+  const [attachments, setAttachments] = useState<TransactionAttachment[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function openDetail(edit: boolean) {
+  async function openDetail(edit: boolean) {
     setStartInEdit(edit);
+    setLoadingDetail(true);
+    const result = await getAttachmentsAction(tx.txNo);
+    setAttachments(result);
+    setLoadingDetail(false);
     setDetailOpen(true);
   }
 
@@ -63,7 +70,8 @@ export function TransactionRow({
         <TableCell className="max-w-[280px]">
           <button
             onClick={() => openDetail(false)}
-            className="block w-full truncate text-left hover:text-primary"
+            disabled={loadingDetail}
+            className="block w-full truncate text-left hover:text-primary disabled:cursor-wait"
             title={tx.description || "(tanpa keterangan)"}
           >
             {tx.description || "(tanpa keterangan)"}
@@ -103,19 +111,28 @@ export function TransactionRow({
         <TableCell className="text-center">
           <button
             onClick={() => openDetail(false)}
+            disabled={loadingDetail}
             className={cn(
-              "mx-auto flex size-7 items-center justify-center rounded-lg border",
-              tx.attachmentUrl ? "border-secondary bg-secondary text-accent-foreground" : "border-border text-muted-foreground"
+              "relative mx-auto flex size-7 items-center justify-center rounded-lg border disabled:cursor-wait",
+              tx.attachmentCount > 0
+                ? "border-secondary bg-secondary text-accent-foreground"
+                : "border-border text-muted-foreground"
             )}
           >
             <Paperclip className="size-3.5" />
+            {tx.attachmentCount > 1 && (
+              <span className="absolute -top-1.5 -right-1.5 flex size-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-medium text-primary-foreground">
+                {tx.attachmentCount}
+              </span>
+            )}
           </button>
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
             <button
               onClick={() => openDetail(true)}
-              className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
+              disabled={loadingDetail}
+              className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary disabled:cursor-wait"
               title="Edit transaksi"
             >
               <Pencil className="size-3.5" />
@@ -153,7 +170,7 @@ export function TransactionRow({
       </TableRow>
 
       <TransactionDetailSheet
-        tx={tx}
+        tx={{ ...tx, attachments }}
         open={detailOpen}
         onOpenChange={setDetailOpen}
         startInEdit={startInEdit}

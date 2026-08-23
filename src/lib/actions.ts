@@ -5,12 +5,20 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { categories, divisions, transactions } from "@/db/schema";
-import { getCurrentBalance, getNextTxNo } from "@/db/queries";
+import { categories, divisions, transactionAttachments, transactions } from "@/db/schema";
+import type { TransactionAttachment } from "@/db/schema";
+import { getCurrentBalance, getNextTxNo, getTransactionByNo } from "@/db/queries";
+import { MAX_ATTACHMENT_SIZE } from "@/lib/attachment";
 import { UNCATEGORIZED } from "@/lib/categories";
 import { UNASSIGNED_DIVISION } from "@/lib/divisions";
 import { parseTransactionWorkbook } from "@/lib/import";
 import { createSessionToken, verifyCredentials } from "@/lib/session";
+
+/** Converts an uploaded photo to the `data:` URI format attachments are stored as. */
+async function fileToDataUrl(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return `data:${file.type || "application/octet-stream"};base64,${buffer.toString("base64")}`;
+}
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -57,12 +65,15 @@ export type CreateTransactionInput = {
   division: string;
   type: "masuk" | "keluar";
   nominal: number;
-  attachmentUrl?: string | null;
 };
+
+export type CreateTransactionResult =
+  | { ok: true; txNo: number }
+  | { ok: false; error: string };
 
 export async function createTransactionAction(
   input: CreateTransactionInput
-): Promise<ActionResult> {
+): Promise<CreateTransactionResult> {
   const description = input.description.trim();
   if (!description) return { ok: false, error: "Keterangan wajib diisi." };
   if (!(input.nominal > 0)) {
@@ -86,11 +97,10 @@ export async function createTransactionAction(
     amountIn: input.type === "masuk" ? input.nominal : 0,
     amountOut: input.type === "keluar" ? input.nominal : 0,
     balance: newBalance,
-    attachmentUrl: input.attachmentUrl || null,
   });
 
   revalidateAll();
-  return { ok: true };
+  return { ok: true, txNo };
 }
 
 export type UpdateTransactionInput = {
@@ -101,7 +111,6 @@ export type UpdateTransactionInput = {
   division?: string;
   type?: "masuk" | "keluar";
   nominal?: number;
-  attachmentUrl?: string | null;
 };
 
 export async function updateTransactionAction(
@@ -123,9 +132,6 @@ export async function updateTransactionAction(
   }
   if (input.division !== undefined) {
     patch.division = input.division.trim() || UNASSIGNED_DIVISION;
-  }
-  if (input.attachmentUrl !== undefined) {
-    patch.attachmentUrl = input.attachmentUrl || null;
   }
 
   // `type`/`nominal` change amount_in/amount_out together, so a partial edit (only one
@@ -156,11 +162,38 @@ export async function updateTransactionAction(
   return { ok: true };
 }
 
-export async function removeAttachmentAction(txNo: number): Promise<ActionResult> {
-  await db
-    .update(transactions)
-    .set({ attachmentUrl: null, updatedAt: new Date() })
-    .where(eq(transactions.txNo, txNo));
+export async function getAttachmentsAction(txNo: number): Promise<TransactionAttachment[]> {
+  const tx = await getTransactionByNo(txNo);
+  return tx?.attachments ?? [];
+}
+
+export type AddAttachmentResult =
+  | { ok: true; attachment: TransactionAttachment }
+  | { ok: false; error: string };
+
+export async function addAttachmentAction(txNo: number, file: File): Promise<AddAttachmentResult> {
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, error: "File harus berupa gambar." };
+  }
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    return { ok: false, error: "Ukuran file maksimal 5MB." };
+  }
+
+  const [tx] = await db.select().from(transactions).where(eq(transactions.txNo, txNo)).limit(1);
+  if (!tx) return { ok: false, error: "Transaksi tidak ditemukan." };
+
+  const url = await fileToDataUrl(file);
+  const [attachment] = await db
+    .insert(transactionAttachments)
+    .values({ transactionId: tx.id, url })
+    .returning();
+
+  revalidateAll();
+  return { ok: true, attachment };
+}
+
+export async function removeAttachmentAction(attachmentId: number): Promise<ActionResult> {
+  await db.delete(transactionAttachments).where(eq(transactionAttachments.id, attachmentId));
   revalidateAll();
   return { ok: true };
 }
