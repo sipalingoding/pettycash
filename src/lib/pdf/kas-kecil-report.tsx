@@ -1,4 +1,11 @@
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import {
+  Document,
+  Page,
+  View,
+  Text,
+  StyleSheet,
+  Image,
+} from "@react-pdf/renderer";
 import type { ReportData } from "@/db/queries";
 import { REPORT_CONFIG } from "@/lib/report-config";
 import { periodeLabel, reportDate, reportNumber } from "@/lib/report-format";
@@ -8,9 +15,18 @@ const NAVY = "#1a237e";
 
 const styles = StyleSheet.create({
   page: {
-    padding: 24,
-    fontFamily: "Times-Roman",
-    fontSize: 9.5,
+    padding: 30,
+    fontSize: 10,
+    fontFamily: "Helvetica",
+  },
+  headerTitle: { fontSize: 14, fontWeight: "bold", marginBottom: 15 },
+  attachmentContainer: { marginBottom: 20, alignItems: "center" },
+  caption: { fontSize: 9, color: "#555", marginBottom: 4 },
+  attachmentImage: {
+    width: 350,
+    height: "auto",
+    objectFit: "contain",
+    marginTop: 5,
   },
   frame: {
     flex: 1,
@@ -95,6 +111,21 @@ export function KasKecilReportDocument({
   const period = periodeLabel(dateFrom, dateTo);
   const pengisian = targetFloat - data.closingBalance;
 
+  const groupedAttachments =
+    data.attachments?.reduce(
+      (acc, att) => {
+        const desc = att.transactionDescription || "Tanpa Keterangan";
+        if (!acc[desc]) {
+          acc[desc] = [];
+        }
+        acc[desc].push(att);
+        return acc;
+      },
+      {} as Record<string, typeof data.attachments>,
+    ) || {};
+
+  const attachmentGroups = Object.entries(groupedAttachments);
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -143,9 +174,15 @@ export function KasKecilReportDocument({
 
             {data.rows.map((r, i) => (
               <View style={styles.row} key={r.txNo} wrap={false}>
-                <Text style={[styles.cell, styles.colNo, styles.center]}>{i + 1}</Text>
-                <Text style={[styles.cell, styles.colDate, styles.center]}>{reportDate(r.date)}</Text>
-                <Text style={[styles.cell, styles.colDesc]}>{r.description || "-"}</Text>
+                <Text style={[styles.cell, styles.colNo, styles.center]}>
+                  {i + 1}
+                </Text>
+                <Text style={[styles.cell, styles.colDate, styles.center]}>
+                  {reportDate(r.date)}
+                </Text>
+                <Text style={[styles.cell, styles.colDesc]}>
+                  {r.description || "-"}
+                </Text>
                 <Text style={[styles.cell, styles.colDebit, styles.right]}>
                   {r.amountIn ? reportNumber(r.amountIn) : ""}
                 </Text>
@@ -163,32 +200,43 @@ export function KasKecilReportDocument({
             <View style={styles.footerRow}>
               <Text style={styles.footerLabel}>Sisa Saldo Saat Ini</Text>
               <View style={styles.footerValueWrap}>
-                <Text style={styles.footerValue}>{reportNumber(data.closingBalance, 0)}</Text>
+                <Text style={styles.footerValue}>
+                  {reportNumber(data.closingBalance, 0)}
+                </Text>
               </View>
             </View>
             <View style={styles.footerRow}>
               <Text style={styles.footerLabel}>Pengisian Pettycash</Text>
               <View style={styles.footerValueWrap}>
                 <View style={styles.footerTotalLine}>
-                  <Text style={styles.footerValueBold}>{reportNumber(pengisian, 0)}</Text>
+                  <Text style={styles.footerValueBold}>
+                    {reportNumber(pengisian, 0)}
+                  </Text>
                 </View>
               </View>
             </View>
             <View style={styles.footerRow}>
               <Text style={styles.footerLabel} />
               <View style={styles.footerValueWrap}>
-                <Text style={styles.footerValue}>{reportNumber(targetFloat, 0)}</Text>
+                <Text style={styles.footerValue}>
+                  {reportNumber(targetFloat, 0)}
+                </Text>
               </View>
             </View>
 
             <View style={styles.transferRow}>
               <Text style={{ fontWeight: 700 }}>Transfer ke : </Text>
-              <Text style={{ fontWeight: 700 }}>{REPORT_CONFIG.transferAccount}</Text>
+              <Text style={{ fontWeight: 700 }}>
+                {REPORT_CONFIG.transferAccount}
+              </Text>
             </View>
 
             <View style={styles.signRow}>
               {REPORT_CONFIG.signatories.map((s, i) => (
-                <View style={i === 0 ? styles.signColFirst : styles.signCol} key={s.role + s.name}>
+                <View
+                  style={i === 0 ? styles.signColFirst : styles.signCol}
+                  key={s.role + s.name}
+                >
                   <Text>{s.role},</Text>
                   <Text style={styles.signName}>{s.name}</Text>
                   <Text style={styles.signTitle}>{s.title}</Text>
@@ -198,6 +246,40 @@ export function KasKecilReportDocument({
           </View>
         </View>
       </Page>
+      {attachmentGroups.map(([description, items], groupIndex) => (
+        <Page key={description + groupIndex} size="A4" style={styles.page}>
+          <View style={styles.frame}>
+            {/* Judul utama hanya muncul sekali di kelompok/halaman pertama */}
+            {groupIndex === 0 && (
+              <Text style={styles.headerTitle}>LAMPIRAN BUKTI TRANSAKSI</Text>
+            )}
+
+            {/* Keterangan yang sama ditampilkan cukup sekali per halaman */}
+            <View style={styles.attachmentContainer}>
+              <Text
+                style={[
+                  styles.caption,
+                  { fontSize: 11, fontWeight: "bold", marginBottom: 10 },
+                ]}
+              >
+                Lampiran: {description}
+              </Text>
+
+              {/* Render semua gambar bukti yang masuk dalam keterangan ini */}
+              {items.map(
+                (att) =>
+                  att.url && (
+                    <Image
+                      key={att.id}
+                      src={att.url}
+                      style={[styles.attachmentImage, { marginBottom: 10 }]}
+                    />
+                  ),
+              )}
+            </View>
+          </View>
+        </Page>
+      ))}
     </Document>
   );
 }

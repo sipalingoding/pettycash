@@ -1,6 +1,11 @@
 import { and, asc, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { db } from "./index";
-import { categories, divisions, transactionAttachments, transactions } from "./schema";
+import {
+  categories,
+  divisions,
+  transactionAttachments,
+  transactions,
+} from "./schema";
 import type { Transaction, TransactionAttachment } from "./schema";
 
 export type CategoryStat = {
@@ -30,7 +35,10 @@ export type Aggregates = {
 
 /** Single source of truth for dashboard, laporan, and kategori pages. */
 export async function getAggregates(year?: string): Promise<Aggregates> {
-  const yearFilter = year && year !== "Semua" ? sql`to_char(${transactions.date}, 'YYYY') = ${year}` : undefined;
+  const yearFilter =
+    year && year !== "Semua"
+      ? sql`to_char(${transactions.date}, 'YYYY') = ${year}`
+      : undefined;
 
   const [totals] = await db
     .select({
@@ -146,8 +154,8 @@ export async function getTransactions(params: TransactionListParams) {
       conditions.push(
         sql`${transactions.category} not in (${sql.join(
           topCategories.map((c) => sql`${c}`),
-          sql`, `
-        )})`
+          sql`, `,
+        )})`,
       );
     } else if (category !== "Lainnya") {
       conditions.push(eq(transactions.category, category));
@@ -163,7 +171,8 @@ export async function getTransactions(params: TransactionListParams) {
   const orderColumn =
     sortBy === "amountOut" ? transactions.amountOut : transactions.date;
   const orderFn = sortDir === "asc" ? asc : desc;
-  const tieBreak = sortDir === "asc" ? asc(transactions.txNo) : desc(transactions.txNo);
+  const tieBreak =
+    sortDir === "asc" ? asc(transactions.txNo) : desc(transactions.txNo);
 
   const [{ total }] = await db
     .select({ total: sql<number>`count(*)::int` })
@@ -190,7 +199,9 @@ export async function getTransactions(params: TransactionListParams) {
 export type TransactionListRow = Transaction & { attachmentCount: number };
 
 /** Attachment counts keyed by transaction id, for the "Lampiran" list indicator. */
-async function getAttachmentCounts(transactionIds: number[]): Promise<Map<number, number>> {
+async function getAttachmentCounts(
+  transactionIds: number[],
+): Promise<Map<number, number>> {
   if (transactionIds.length === 0) return new Map();
   const rows = await db
     .select({
@@ -203,9 +214,13 @@ async function getAttachmentCounts(transactionIds: number[]): Promise<Map<number
   return new Map(rows.map((r) => [r.transactionId, r.count]));
 }
 
-export type TransactionWithAttachments = Transaction & { attachments: TransactionAttachment[] };
+export type TransactionWithAttachments = Transaction & {
+  attachments: TransactionAttachment[];
+};
 
-export async function getTransactionByNo(txNo: number): Promise<TransactionWithAttachments | null> {
+export async function getTransactionByNo(
+  txNo: number,
+): Promise<TransactionWithAttachments | null> {
   const [row] = await db
     .select()
     .from(transactions)
@@ -232,7 +247,10 @@ export async function getAttachmentById(id: number) {
       txNo: transactions.txNo,
     })
     .from(transactionAttachments)
-    .innerJoin(transactions, eq(transactions.id, transactionAttachments.transactionId))
+    .innerJoin(
+      transactions,
+      eq(transactions.id, transactionAttachments.transactionId),
+    )
     .where(eq(transactionAttachments.id, id))
     .limit(1);
   return row ?? null;
@@ -267,6 +285,7 @@ export async function getDivisionNames(): Promise<string[]> {
 }
 
 export type ReportRow = {
+  id: number;
   txNo: number;
   date: string;
   description: string;
@@ -279,6 +298,12 @@ export type ReportData = {
   openingBalance: number;
   rows: ReportRow[];
   closingBalance: number;
+  attachments: {
+    id: number;
+    url: string;
+    transactionId: number;
+    transactionDescription: string | null;
+  }[];
 };
 
 /** Chronological ledger slice for the "Laporan Kas Kecil" print/export, with the running
@@ -288,7 +313,7 @@ export async function getReportData(
   dateFrom?: string,
   dateTo?: string,
   txNoFrom?: number,
-  txNoTo?: number
+  txNoTo?: number,
 ): Promise<ReportData> {
   const conditions = [];
   if (dateFrom) conditions.push(gte(transactions.date, dateFrom));
@@ -299,6 +324,7 @@ export async function getReportData(
 
   const rows = await db
     .select({
+      id: transactions.id,
       txNo: transactions.txNo,
       date: transactions.date,
       description: transactions.description,
@@ -310,6 +336,25 @@ export async function getReportData(
     .where(where)
     .orderBy(asc(transactions.date), asc(transactions.txNo));
 
+  let attachments: ReportData["attachments"] = [];
+  if (rows.length > 0) {
+    const transactionIds = rows.map((r) => r.id);
+    attachments = await db
+      .select({
+        id: transactionAttachments.id,
+        url: transactionAttachments.url,
+        transactionId: transactionAttachments.transactionId,
+        transactionDescription: transactions.description,
+      })
+      .from(transactionAttachments)
+      .innerJoin(
+        transactions,
+        eq(transactions.id, transactionAttachments.transactionId),
+      )
+      .where(inArray(transactionAttachments.transactionId, transactionIds))
+      .orderBy(asc(transactionAttachments.id));
+  }
+
   let openingBalance = 0;
   if (rows.length) {
     const first = rows[0];
@@ -317,7 +362,7 @@ export async function getReportData(
       .select({ balance: transactions.balance })
       .from(transactions)
       .where(
-        sql`(${transactions.date} < ${first.date}) or (${transactions.date} = ${first.date} and ${transactions.txNo} < ${first.txNo})`
+        sql`(${transactions.date} < ${first.date}) or (${transactions.date} = ${first.date} and ${transactions.txNo} < ${first.txNo})`,
       )
       .orderBy(desc(transactions.date), desc(transactions.txNo))
       .limit(1);
@@ -332,9 +377,11 @@ export async function getReportData(
     openingBalance = before?.balance ?? 0;
   }
 
-  const closingBalance = rows.length ? rows[rows.length - 1].balance : openingBalance;
+  const closingBalance = rows.length
+    ? rows[rows.length - 1].balance
+    : openingBalance;
 
-  return { openingBalance, rows, closingBalance };
+  return { openingBalance, rows, closingBalance, attachments };
 }
 
 export type DivisionStat = { id: number; name: string; count: number };
@@ -350,8 +397,14 @@ export async function getDivisionStats(): Promise<DivisionStat[]> {
     .groupBy(transactions.division);
   const countByName = new Map(counts.map((c) => [c.division, c.count]));
 
-  const rows = await db.select({ id: divisions.id, name: divisions.name }).from(divisions);
+  const rows = await db
+    .select({ id: divisions.id, name: divisions.name })
+    .from(divisions);
   return rows
-    .map((r) => ({ id: r.id, name: r.name, count: countByName.get(r.name) ?? 0 }))
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      count: countByName.get(r.name) ?? 0,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name, "id"));
 }
