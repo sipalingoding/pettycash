@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import { toast } from "sonner";
 import { Download, ImagePlus, Loader2, X } from "lucide-react";
 import { MAX_ATTACHMENT_SIZE } from "@/lib/attachment";
@@ -24,6 +24,7 @@ export function PhotoUpload({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   async function handleFiles(files: File[]) {
     const valid: File[] = [];
@@ -43,14 +44,51 @@ export function PhotoUpload({
     setUploading(true);
     try {
       await onAdd(valid);
-      toast.success(valid.length > 1 ? `${valid.length} foto tersimpan.` : "Foto tersimpan.");
+      toast.success(
+        valid.length > 1
+          ? `${valid.length} foto tersimpan.`
+          : "Foto tersimpan.",
+      );
     } finally {
       setUploading(false);
     }
   }
 
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFiles = e.dataTransfer.files
+      ? Array.from(e.dataTransfer.files)
+      : [];
+    if (droppedFiles.length > 0) {
+      handleFiles(droppedFiles);
+    }
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2.5">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={cn(
+        "flex flex-wrap items-center gap-2.5 rounded-xl transition-colors",
+        isDragging && "bg-primary/5 ring-2 ring-primary/20 p-2",
+      )}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -58,10 +96,6 @@ export function PhotoUpload({
         multiple
         className="hidden"
         onChange={(e) => {
-          // Extract the File objects before resetting `.value` — clearing the input's
-          // value empties the same live FileList `e.target.files` points to, so a
-          // reference grabbed before the reset can end up looking empty by the time
-          // it's read.
           const files = e.target.files ? Array.from(e.target.files) : [];
           e.target.value = "";
           if (files.length > 0) handleFiles(files);
@@ -76,11 +110,15 @@ export function PhotoUpload({
             className="group relative size-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.url} alt="Lampiran" className="size-full object-cover" />
+            <img
+              src={photo.url}
+              alt="Lampiran"
+              className="size-full object-cover"
+            />
             <div
               className={cn(
                 "absolute inset-0 flex items-center justify-center gap-1.5 bg-black/55 opacity-0 transition-opacity group-hover:opacity-100",
-                removing && "opacity-100"
+                removing && "opacity-100",
               )}
             >
               {downloadFilename && (
@@ -100,7 +138,11 @@ export function PhotoUpload({
                 title="Hapus foto"
                 className="text-white disabled:opacity-100"
               >
-                {removing ? <Loader2 className="size-4 animate-spin" /> : <X className="size-4" />}
+                {removing ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <X className="size-4" />
+                )}
               </button>
             </div>
           </div>
@@ -111,7 +153,10 @@ export function PhotoUpload({
         type="button"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
-        className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-input text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
+        className={cn(
+          "flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-input text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-60",
+          isDragging && "border-primary text-primary",
+        )}
       >
         {uploading ? (
           <Loader2 className="size-4 animate-spin" />
