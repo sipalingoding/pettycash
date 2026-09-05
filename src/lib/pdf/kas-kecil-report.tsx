@@ -201,11 +201,9 @@ export function KasKecilReportDocument({
             <View style={styles.footerRow}>
               <Text style={styles.footerLabel}>Sisa Saldo Saat Ini</Text>
               <View style={styles.footerValueWrap}>
-                <View style={styles.footerTotalLine}>
-                  <Text style={styles.footerValue}>
-                    {reportNumber(data.closingBalance, 0)}
-                  </Text>
-                </View>
+                <Text style={styles.footerValue}>
+                  {reportNumber(data.closingBalance, 0)}
+                </Text>
               </View>
             </View>
             <View style={styles.footerRow}>
@@ -219,9 +217,11 @@ export function KasKecilReportDocument({
             <View style={styles.footerRow}>
               <Text style={styles.footerLabel} />
               <View style={styles.footerValueWrap}>
-                <Text style={styles.footerValue}>
-                  {reportNumber(targetFloat, 0)}
-                </Text>
+                <View style={styles.footerTotalLine}>
+                  <Text style={styles.footerValue}>
+                    {reportNumber(targetFloat, 0)}
+                  </Text>
+                </View>
               </View>
             </View>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type DragEvent } from "react";
+import { useRef, useState, type DragEvent, type ClipboardEvent } from "react";
 import { toast } from "sonner";
 import { Download, ImagePlus, Loader2, X } from "lucide-react";
 import { MAX_ATTACHMENT_SIZE } from "@/lib/attachment";
@@ -19,7 +19,6 @@ export function PhotoUpload({
   onAdd: (files: File[]) => void | Promise<void>;
   onRemove: (key: string) => void | Promise<void>;
   removingKeys?: string[];
-  /** When provided, each thumbnail also gets a download link using this filename. */
   downloadFilename?: (photo: PhotoItem, index: number) => string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,13 +78,39 @@ export function PhotoUpload({
     }
   }
 
+  function handlePaste(e: ClipboardEvent<HTMLDivElement>) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const pastedFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          // Berikan nama default karena hasil paste clipboard biasanya tidak punya nama file asli
+          const namedFile = new File([file], `pasted-image-${Date.now()}.png`, {
+            type: file.type,
+          });
+          pastedFiles.push(namedFile);
+        }
+      }
+    }
+
+    if (pastedFiles.length > 0) {
+      e.preventDefault();
+      handleFiles(pastedFiles);
+    }
+  }
+
   return (
     <div
+      tabIndex={0}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onPaste={handlePaste}
       className={cn(
-        "flex flex-wrap items-center gap-2.5 rounded-xl transition-colors",
+        "flex flex-wrap items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-colors",
         isDragging && "bg-primary/5 ring-2 ring-primary/20 p-2",
       )}
     >
