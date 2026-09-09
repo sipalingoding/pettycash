@@ -63,12 +63,14 @@ const styles = StyleSheet.create({
     borderRight: `0.75pt solid ${BORDER}`,
     justifyContent: "center",
   },
-  colNo: { width: "6%" },
-  colDate: { width: "11%" },
-  colDesc: { width: "39%" },
-  colDebit: { width: "14%" },
-  colKredit: { width: "14%" },
-  colSaldo: { width: "16%", borderRight: "none" },
+  colNo: { width: "4%" },
+  colDate: { width: "9%" },
+  colDesc: { width: "32%" },
+  colCategory: { width: "13%" },
+  colDivision: { width: "10%" },
+  colDebit: { width: "10%" },
+  colKredit: { width: "10%" },
+  colSaldo: { width: "12%", borderRight: "none" },
   right: { textAlign: "right" },
   center: { textAlign: "center" },
   footer: {
@@ -128,7 +130,7 @@ export function KasKecilReportDocument({
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.frame}>
           <View style={styles.headerRow}>
             <Text style={styles.headerLabel}>Nama</Text>
@@ -157,6 +159,8 @@ export function KasKecilReportDocument({
               <Text style={[styles.headCell, styles.colNo]}>No</Text>
               <Text style={[styles.headCell, styles.colDate]}>Tanggal</Text>
               <Text style={[styles.headCell, styles.colDesc]}>Keterangan</Text>
+              <Text style={[styles.headCell, styles.colCategory]}>Kategori</Text>
+              <Text style={[styles.headCell, styles.colDivision]}>Divisi</Text>
               <Text style={[styles.headCell, styles.colDebit]}>Debit</Text>
               <Text style={[styles.headCell, styles.colKredit]}>Kredit</Text>
               <Text style={[styles.headCell, styles.colSaldo]}>Saldo</Text>
@@ -166,6 +170,8 @@ export function KasKecilReportDocument({
               <View style={[styles.cell, styles.colNo]} />
               <View style={[styles.cell, styles.colDate]} />
               <Text style={[styles.cell, styles.colDesc]}>Sisa Saldo</Text>
+              <View style={[styles.cell, styles.colCategory]} />
+              <View style={[styles.cell, styles.colDivision]} />
               <View style={[styles.cell, styles.colDebit]} />
               <View style={[styles.cell, styles.colKredit]} />
               <Text style={[styles.cell, styles.colSaldo, styles.right]}>
@@ -183,6 +189,12 @@ export function KasKecilReportDocument({
                 </Text>
                 <Text style={[styles.cell, styles.colDesc]}>
                   {r.description || "-"}
+                </Text>
+                <Text style={[styles.cell, styles.colCategory]}>
+                  {r.category || "-"}
+                </Text>
+                <Text style={[styles.cell, styles.colDivision]}>
+                  {r.division || "-"}
                 </Text>
                 <Text style={[styles.cell, styles.colDebit, styles.right]}>
                   {r.amountIn ? reportNumber(r.amountIn) : ""}

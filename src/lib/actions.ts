@@ -65,6 +65,7 @@ export type CreateTransactionInput = {
   division: string;
   type: "masuk" | "keluar";
   nominal: number;
+  insertAfterTxNo?: number;
 };
 
 export type CreateTransactionResult =
@@ -83,12 +84,30 @@ export async function createTransactionAction(
 
   const category = input.category.trim() || UNCATEGORIZED;
   const division = input.division.trim() || UNASSIGNED_DIVISION;
-  const currentBalance = await getCurrentBalance();
-  const newBalance =
-    input.type === "masuk" ? currentBalance + input.nominal : currentBalance - input.nominal;
-  const txNo = await getNextTxNo();
+  const insertAfterTxNo = input.insertAfterTxNo;
+  if (insertAfterTxNo !== undefined && (!Number.isInteger(insertAfterTxNo) || insertAfterTxNo < 1)) {
+    return { ok: false, error: "Posisi sisip transaksi tidak valid." };
+  }
 
-  await db.insert(transactions).values({
+  const anchor =
+    insertAfterTxNo === undefined
+      ? null
+      : (
+          await db
+            .select({ balance: transactions.balance })
+            .from(transactions)
+            .where(eq(transactions.txNo, insertAfterTxNo))
+            .limit(1)
+        )[0];
+  if (insertAfterTxNo !== undefined && !anchor) {
+    return { ok: false, error: "Transaksi acuan tidak ditemukan." };
+  }
+
+  const baseBalance = anchor?.balance ?? (await getCurrentBalance());
+  const newBalance =
+    input.type === "masuk" ? baseBalance + input.nominal : baseBalance - input.nominal;
+  const txNo = insertAfterTxNo === undefined ? await getNextTxNo() : insertAfterTxNo + 1;
+  const value = {
     txNo,
     date: input.date,
     description,
@@ -97,7 +116,18 @@ export async function createTransactionAction(
     amountIn: input.type === "masuk" ? input.nominal : 0,
     amountOut: input.type === "keluar" ? input.nominal : 0,
     balance: newBalance,
-  });
+  };
+
+  if (insertAfterTxNo === undefined) {
+    await db.insert(transactions).values(value);
+  } else {
+    await db.batch([
+      db.execute(sql`update transactions set tx_no = -tx_no - 1 where tx_no >= ${txNo}`),
+      db.insert(transactions).values(value),
+      db.execute(sql`update transactions set tx_no = -tx_no where tx_no < 0`),
+      recomputeBalancesQuery(),
+    ]);
+  }
 
   revalidateAll();
   return { ok: true, txNo };
@@ -202,7 +232,11 @@ export async function removeAttachmentAction(attachmentId: number): Promise<Acti
 // normal append-at-the-end flow leaves later rows' stored balance stale, so this
 // recomputes the whole column from amount_in/amount_out in one pass.
 async function recomputeBalances() {
-  await db.execute(sql`
+  await recomputeBalancesQuery();
+}
+
+function recomputeBalancesQuery() {
+  return db.execute(sql`
     update transactions t
     set balance = sub.running
     from (

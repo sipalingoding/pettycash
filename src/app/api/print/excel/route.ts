@@ -16,13 +16,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Rentang tanggal (dari & sampai) wajib diisi." }, { status: 400 });
   }
 
-  const data = await getReportData(from, to, txNoFrom, txNoTo);
-  const buffer = await buildKasKecilWorkbook(data, from, to, targetFloat);
+  try {
+    const data = await getReportData(from, to, txNoFrom, txNoTo);
+    const buffer = await buildKasKecilWorkbook(data, from, to, targetFloat);
 
-  return new NextResponse(buffer, {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="laporan-kas-kecil-${from}_sd_${to}.xlsx"`,
-    },
-  });
+    return new NextResponse(buffer, {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="laporan-kas-kecil-${from}_sd_${to}.xlsx"`,
+      },
+    });
+  } catch (err) {
+    console.error("[print/excel] Failed to generate report", err);
+    return NextResponse.json({ error: "Gagal membuat Excel laporan." }, { status: 500 });
+  }
 }

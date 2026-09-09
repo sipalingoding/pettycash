@@ -108,7 +108,7 @@ export default async function TransaksiPage({
                 </TableHead>
                 <TableHead className="w-32 text-right">Saldo</TableHead>
                 <TableHead className="w-20 text-center">Lampiran</TableHead>
-                <TableHead className="w-20" />
+                <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
             <TableBody>

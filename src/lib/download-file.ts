@@ -1,7 +1,13 @@
 /** Fetches a file URL and triggers a save-as download, so callers can show a real loading
  * state while the file is generated server-side (a plain `<a download>` gives no such signal). */
 export async function downloadFile(url: string, filenameFallback: string): Promise<void> {
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "same-origin" });
+  const contentType = res.headers.get("Content-Type") ?? "";
+
+  if (res.redirected && new URL(res.url).pathname === "/login") {
+    throw new Error("Sesi login berakhir. Silakan login ulang lalu coba unduh lagi.");
+  }
+
   if (!res.ok) {
     let message = "Gagal mengunduh berkas.";
     try {
@@ -11,6 +17,10 @@ export async function downloadFile(url: string, filenameFallback: string): Promi
       // response wasn't JSON — keep the generic message
     }
     throw new Error(message);
+  }
+
+  if (contentType.includes("text/html")) {
+    throw new Error("Server mengembalikan halaman HTML, bukan file laporan. Silakan muat ulang halaman lalu coba lagi.");
   }
 
   const blob = await res.blob();

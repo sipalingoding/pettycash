@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { TransactionDetailSheet } from "@/components/transaction-detail-sheet";
 import { deleteTransactionAction, getAttachmentsAction } from "@/lib/actions";
 import { categoryColor, UNCATEGORIZED } from "@/lib/categories";
@@ -128,43 +129,53 @@ export function TransactionRow({
           </button>
         </TableCell>
         <TableCell>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-            <button
-              onClick={() => openDetail(true)}
-              disabled={loadingDetail}
-              className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary disabled:cursor-wait"
-              title="Edit transaksi"
-            >
-              <Pencil className="size-3.5" />
-            </button>
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
-                  <button
-                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                    title="Hapus transaksi"
-                  />
-                }
+          <div className="flex items-center justify-end gap-1">
+            <AddTransactionDialog
+              currentBalance={tx.balance}
+              categoryOptions={categoryOptions}
+              divisionOptions={divisionOptions}
+              insertAfterTxNo={tx.txNo}
+              triggerVariant="icon"
+              triggerTitle={`Tambah transaksi di bawah #${tx.txNo}`}
+            />
+            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+              <button
+                onClick={() => openDetail(true)}
+                disabled={loadingDetail}
+                className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary disabled:cursor-wait"
+                title="Edit transaksi"
               >
-                <Trash2 className="size-3.5" />
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Hapus transaksi #{tx.txNo}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    &ldquo;{tx.description || "(tanpa keterangan)"}&rdquo; akan dihapus permanen dan saldo
-                    transaksi berikutnya akan dihitung ulang. Tindakan ini tidak bisa dibatalkan.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                  <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={pending}>
-                    {pending && <Loader2 className="size-4 animate-spin" />}
-                    {pending ? "Menghapus…" : "Hapus"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <Pencil className="size-3.5" />
+              </button>
+              <AlertDialog>
+                <AlertDialogTrigger
+                  render={
+                    <button
+                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                      title="Hapus transaksi"
+                    />
+                  }
+                >
+                  <Trash2 className="size-3.5" />
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Hapus transaksi #{tx.txNo}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      &ldquo;{tx.description || "(tanpa keterangan)"}&rdquo; akan dihapus permanen dan saldo
+                      transaksi berikutnya akan dihitung ulang. Tindakan ini tidak bisa dibatalkan.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={pending}>
+                      {pending && <Loader2 className="size-4 animate-spin" />}
+                      {pending ? "Menghapus…" : "Hapus"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </TableCell>
       </TableRow>

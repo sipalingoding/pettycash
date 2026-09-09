@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getReportData } from "@/db/queries";
+import type { ReportData } from "@/db/queries";
 import { KasKecilReportDocument } from "@/lib/pdf/kas-kecil-report";
 
 export async function GET(request: Request) {
@@ -17,15 +18,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Rentang tanggal (dari & sampai) wajib diisi." }, { status: 400 });
   }
 
-  const data = await getReportData(from, to, txNoFrom, txNoTo);
-  const buffer = await renderToBuffer(
+  let data: ReportData;
+  try {
+    data = await getReportData(from, to, txNoFrom, txNoTo);
+  } catch (err) {
+    console.error("[print/pdf] Failed to load report data", err);
+    return NextResponse.json({ error: "Gagal membaca data laporan." }, { status: 500 });
+  }
+
+  const document = (
     <KasKecilReportDocument data={data} dateFrom={from} dateTo={to} targetFloat={targetFloat} />
   );
 
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="laporan-kas-kecil-${from}_sd_${to}.pdf"`,
-    },
-  });
+  try {
+    const buffer = await renderToBuffer(document);
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="laporan-kas-kecil-${from}_sd_${to}.pdf"`,
+      },
+    });
+  } catch (err) {
+    console.error("[print/pdf] Failed to generate report", err);
+    return NextResponse.json({ error: "Gagal membuat PDF laporan." }, { status: 500 });
+  }
 }

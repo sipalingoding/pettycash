@@ -38,10 +38,16 @@ export function AddTransactionDialog({
   currentBalance,
   categoryOptions,
   divisionOptions,
+  insertAfterTxNo,
+  triggerVariant = "default",
+  triggerTitle,
 }: {
   currentBalance: number;
   categoryOptions: string[];
   divisionOptions: string[];
+  insertAfterTxNo?: number;
+  triggerVariant?: "default" | "inline" | "icon";
+  triggerTitle?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -82,6 +88,7 @@ export function AddTransactionDialog({
         division,
         type,
         nominal,
+        insertAfterTxNo,
       });
       if (!result.ok) {
         setError(result.error);
@@ -95,11 +102,15 @@ export function AddTransactionDialog({
         }
       }
 
-      toast.success("Transaksi tersimpan.");
+      toast.success(insertAfterTxNo === undefined ? "Transaksi tersimpan." : "Transaksi disisipkan.");
       setOpen(false);
       reset();
     });
   }
+
+  const isInsert = insertAfterTxNo !== undefined;
+  const isInline = triggerVariant === "inline";
+  const isIcon = triggerVariant === "icon";
 
   return (
     <Dialog
@@ -111,16 +122,34 @@ export function AddTransactionDialog({
     >
       <DialogTrigger
         render={
-          <Button className="shadow-[0_8px_18px_rgba(172,94,113,0.26)]">
+          <Button
+            variant={isInline ? "outline" : isIcon ? "ghost" : "default"}
+            size={isInline ? "xs" : isIcon ? "icon-sm" : "default"}
+            className={
+              isInline
+                ? "h-6 rounded-full border-dashed bg-card text-[12px] text-muted-foreground hover:border-primary hover:text-primary"
+                : isIcon
+                  ? "text-muted-foreground hover:bg-secondary hover:text-primary"
+                : "shadow-[0_8px_18px_rgba(172,94,113,0.26)]"
+            }
+            title={triggerTitle}
+            aria-label={triggerTitle}
+          >
             <Plus className="size-4" />
-            Transaksi Baru
+            {isIcon ? null : isInline ? "Tambah" : "Transaksi Baru"}
           </Button>
         }
       />
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle className="font-heading text-xl">Catat Transaksi</DialogTitle>
-          <DialogDescription>Entri baru akan langsung memperbarui saldo dan laporan.</DialogDescription>
+          <DialogTitle className="font-heading text-xl">
+            {isInsert ? "Sisipkan Transaksi" : "Catat Transaksi"}
+          </DialogTitle>
+          <DialogDescription>
+            {isInsert
+              ? `Entri baru akan masuk setelah transaksi #${insertAfterTxNo}; nomor setelahnya akan bergeser.`
+              : "Entri baru akan langsung memperbarui saldo dan laporan."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2 sm:grid-cols-2">

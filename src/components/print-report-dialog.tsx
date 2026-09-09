@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { FileSpreadsheet, FileText, Loader2, Printer } from "lucide-react";
-import { toast } from "sonner";
+import { useState } from "react";
+import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +15,6 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { downloadFile } from "@/lib/download-file";
 import { REPORT_CONFIG } from "@/lib/report-config";
 import { formatNominalInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -25,7 +23,6 @@ type Format = "pdf" | "excel";
 
 export function PrintReportDialog() {
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [txFrom, setTxFrom] = useState("");
@@ -56,14 +53,14 @@ export function PrintReportDialog() {
 
   function handleDownload() {
     if (!canDownload) return;
-    startTransition(async () => {
-      try {
-        await downloadFile(href, `laporan-kas-kecil.${format === "pdf" ? "pdf" : "xlsx"}`);
-        setOpen(false);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Gagal mengunduh laporan.");
-      }
-    });
+
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `laporan-kas-kecil.${format === "pdf" ? "pdf" : "xlsx"}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setOpen(false);
   }
 
   return (
@@ -187,9 +184,9 @@ export function PrintReportDialog() {
         </div>
 
         <DialogFooter>
-          <Button onClick={handleDownload} disabled={!canDownload || pending}>
-            {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
-            {pending ? "Menyiapkan…" : "Unduh Laporan"}
+          <Button onClick={handleDownload} disabled={!canDownload}>
+            <Printer className="size-3.5" />
+            Unduh Laporan
           </Button>
         </DialogFooter>
       </DialogContent>

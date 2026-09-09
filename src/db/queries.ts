@@ -289,6 +289,8 @@ export type ReportRow = {
   txNo: number;
   date: string;
   description: string;
+  category: string;
+  division: string;
   amountIn: number;
   amountOut: number;
   balance: number;
@@ -328,6 +330,8 @@ export async function getReportData(
       txNo: transactions.txNo,
       date: transactions.date,
       description: transactions.description,
+      category: transactions.category,
+      division: transactions.division,
       amountIn: transactions.amountIn,
       amountOut: transactions.amountOut,
       balance: transactions.balance,
