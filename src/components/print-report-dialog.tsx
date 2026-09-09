@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { FileSpreadsheet, FileText, Printer } from "lucide-react";
+import { useRef, useState } from "react";
+import { FileSpreadsheet, FileText, Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,8 @@ type Format = "pdf" | "excel";
 
 export function PrintReportDialog() {
   const [open, setOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [txFrom, setTxFrom] = useState("");
@@ -38,7 +40,12 @@ export function PrintReportDialog() {
     setTxFrom("");
     setTxTo("");
     setFormat("pdf");
+    setDownloading(false);
     setTargetDisplay(formatNominalInput(String(REPORT_CONFIG.defaultTargetFloat)));
+    if (loadingTimerRef.current) {
+      clearTimeout(loadingTimerRef.current);
+      loadingTimerRef.current = null;
+    }
   }
 
   const target = Number(targetDisplay.replace(/[^\d]/g, "")) || 0;
@@ -52,7 +59,10 @@ export function PrintReportDialog() {
   const href = `/api/print/${format}?${params.toString()}`;
 
   function handleDownload() {
-    if (!canDownload) return;
+    if (!canDownload || downloading) return;
+
+    setDownloading(true);
+    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
 
     const link = document.createElement("a");
     link.href = href;
@@ -60,7 +70,11 @@ export function PrintReportDialog() {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    setOpen(false);
+
+    loadingTimerRef.current = setTimeout(() => {
+      setDownloading(false);
+      loadingTimerRef.current = null;
+    }, format === "pdf" ? 12_000 : 4_000);
   }
 
   return (
@@ -184,9 +198,9 @@ export function PrintReportDialog() {
         </div>
 
         <DialogFooter>
-          <Button onClick={handleDownload} disabled={!canDownload}>
-            <Printer className="size-3.5" />
-            Unduh Laporan
+          <Button onClick={handleDownload} disabled={!canDownload || downloading}>
+            {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
+            {downloading ? "Menyiapkan…" : "Unduh Laporan"}
           </Button>
         </DialogFooter>
       </DialogContent>
