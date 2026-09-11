@@ -10,12 +10,21 @@ const DAYS_LONG = [
   "Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu",
 ];
 
+const MONEY_FRACTION_DIGITS = 2;
+
+export function formatRupiahNumber(n: number): string {
+  return n.toLocaleString("id-ID", {
+    minimumFractionDigits: MONEY_FRACTION_DIGITS,
+    maximumFractionDigits: MONEY_FRACTION_DIGITS,
+  });
+}
+
 export function rp(n: number): string {
-  return "Rp " + Math.round(n).toLocaleString("id-ID");
+  return "Rp " + formatRupiahNumber(n);
 }
 
 export function signedRp(n: number): string {
-  return (n < 0 ? "− " : "+ ") + rp(Math.abs(n)).slice(3);
+  return (n < 0 ? "− " : "+ ") + formatRupiahNumber(Math.abs(n));
 }
 
 /** "YYYY-MM-DD" -> "31 Des 2025" */
@@ -44,10 +53,35 @@ export function fmtCount(n: number): string {
   return n.toLocaleString("id-ID");
 }
 
-/** Strips non-digits and re-formats as the user types into a nominal input, e.g. "12000" -> "12.000". */
-export function formatNominalInput(raw: string): string {
-  const digits = raw.replace(/[^\d]/g, "");
-  return digits ? Number(digits).toLocaleString("id-ID") : "";
+/** Formats nominal input in Indonesian money style, e.g. "12000,5" -> "12.000,5". */
+export function formatNominalInput(
+  raw: string,
+  options: { fixedDecimals?: boolean } = {}
+): string {
+  const compact = raw.replace(/[^\d,.]/g, "");
+  const dotDecimalMatch = compact.includes(",") ? null : compact.match(/^(\d+)\.(\d{1,2})$/);
+  const cleaned = (dotDecimalMatch ? `${dotDecimalMatch[1]},${dotDecimalMatch[2]}` : compact).replace(/[^\d,]/g, "");
+  const hasDecimal = cleaned.includes(",");
+  const [integerPart = "", ...fractionParts] = cleaned.split(",");
+  const integerDigits = integerPart.replace(/\D/g, "");
+  const fractionDigits = fractionParts.join("").replace(/\D/g, "").slice(0, MONEY_FRACTION_DIGITS);
+
+  if (!integerDigits && !fractionDigits && !hasDecimal) return "";
+
+  const integerDisplay = integerDigits ? Number(integerDigits).toLocaleString("id-ID") : "0";
+  if (hasDecimal || options.fixedDecimals) {
+    const decimalDisplay = options.fixedDecimals
+      ? fractionDigits.padEnd(MONEY_FRACTION_DIGITS, "0")
+      : fractionDigits;
+    return `${integerDisplay},${decimalDisplay}`;
+  }
+
+  return integerDisplay;
+}
+
+export function parseNominalInput(raw: string): number {
+  const formatted = formatNominalInput(raw, { fixedDecimals: true });
+  return Number(formatted.replace(/\./g, "").replace(",", ".")) || 0;
 }
 
 /** Date -> "Sabtu, 22 Agustus 2026" */

@@ -214,7 +214,7 @@ export function KasKecilReportDocument({
               <Text style={styles.footerLabel}>Sisa Saldo Saat Ini</Text>
               <View style={styles.footerValueWrap}>
                 <Text style={styles.footerValue}>
-                  {reportNumber(data.closingBalance, 0)}
+                  {reportNumber(data.closingBalance)}
                 </Text>
               </View>
             </View>
@@ -222,7 +222,7 @@ export function KasKecilReportDocument({
               <Text style={styles.footerLabel}>Pengisian Pettycash</Text>
               <View style={styles.footerValueWrap}>
                 <Text style={styles.footerValueBold}>
-                  {reportNumber(pengisian, 0)}
+                  {reportNumber(pengisian)}
                 </Text>
               </View>
             </View>
@@ -231,7 +231,7 @@ export function KasKecilReportDocument({
               <View style={styles.footerValueWrap}>
                 <View style={styles.footerTotalLine}>
                   <Text style={styles.footerValue}>
-                    {reportNumber(targetFloat, 0)}
+                    {reportNumber(targetFloat)}
                   </Text>
                 </View>
               </View>

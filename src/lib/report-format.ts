@@ -3,10 +3,9 @@ const MONTHS_LONG = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-/** The printed report's own number style (comma thousands, dot decimals) — distinct from
- * the app's Indonesian "Rp 12.000" style, to match the source template exactly. */
-export function reportNumber(n: number, decimals: 0 | 2 = 2): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+/** The printed report's money number style, e.g. "1.000,00". */
+export function reportNumber(n: number): string {
+  return n.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /** "YYYY-MM-DD" -> "12/05/2026" */

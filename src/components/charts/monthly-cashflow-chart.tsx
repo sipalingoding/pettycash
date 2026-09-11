@@ -8,7 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { monthShort } from "@/lib/format";
+import { monthShort, rp } from "@/lib/format";
 import type { MonthStat } from "@/db/queries";
 
 const chartConfig = {
@@ -57,7 +57,7 @@ export function MonthlyCashflowChart({ months }: { months: MonthStat[] }) {
           content={
             <ChartTooltipContent
               formatter={(value, name) => [
-                ` Rp ${Number(value).toLocaleString("id-ID")}`,
+                rp(Number(value)),
                 name === "amountIn" ? "Pemasukan" : "Pengeluaran",
               ]}
             />

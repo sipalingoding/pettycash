@@ -5,7 +5,6 @@ import { periodeLabel, reportDate } from "@/lib/report-format";
 
 const THIN: Partial<ExcelJS.Border> = { style: "thin", color: { argb: "FF9AA5C4" } };
 const NUM_FMT = "#,##0.00";
-const NUM_FMT_0 = "#,##0";
 
 export async function buildKasKecilWorkbook(
   data: ReportData,
@@ -94,17 +93,17 @@ export async function buildKasKecilWorkbook(
   const pengisian = targetFloat - data.closingBalance;
 
   const sisaRow = sheet.addRow(["Sisa Saldo Saat Ini", "", "", "", "", "", "", data.closingBalance]);
-  sisaRow.getCell(8).numFmt = NUM_FMT_0;
+  sisaRow.getCell(8).numFmt = NUM_FMT;
   sisaRow.getCell(8).alignment = { horizontal: "right" };
 
   const pengisianRow = sheet.addRow(["Pengisian Pettycash", "", "", "", "", "", "", pengisian]);
-  pengisianRow.getCell(8).numFmt = NUM_FMT_0;
+  pengisianRow.getCell(8).numFmt = NUM_FMT;
   pengisianRow.getCell(8).font = { bold: true };
   pengisianRow.getCell(8).alignment = { horizontal: "right" };
   pengisianRow.getCell(8).border = { top: { style: "thin", color: { argb: "FF000000" } } };
 
   const totalRow = sheet.addRow(["", "", "", "", "", "", "", targetFloat]);
-  totalRow.getCell(8).numFmt = NUM_FMT_0;
+  totalRow.getCell(8).numFmt = NUM_FMT;
   totalRow.getCell(8).alignment = { horizontal: "right" };
 
   sheet.addRow([]);

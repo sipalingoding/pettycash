@@ -16,7 +16,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { REPORT_CONFIG } from "@/lib/report-config";
-import { formatNominalInput } from "@/lib/format";
+import { formatNominalInput, parseNominalInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Format = "pdf" | "excel";
@@ -31,7 +31,7 @@ export function PrintReportDialog() {
   const [txTo, setTxTo] = useState("");
   const [format, setFormat] = useState<Format>("pdf");
   const [targetDisplay, setTargetDisplay] = useState(
-    formatNominalInput(String(REPORT_CONFIG.defaultTargetFloat))
+    formatNominalInput(String(REPORT_CONFIG.defaultTargetFloat), { fixedDecimals: true })
   );
 
   function reset() {
@@ -41,14 +41,14 @@ export function PrintReportDialog() {
     setTxTo("");
     setFormat("pdf");
     setDownloading(false);
-    setTargetDisplay(formatNominalInput(String(REPORT_CONFIG.defaultTargetFloat)));
+    setTargetDisplay(formatNominalInput(String(REPORT_CONFIG.defaultTargetFloat), { fixedDecimals: true }));
     if (loadingTimerRef.current) {
       clearTimeout(loadingTimerRef.current);
       loadingTimerRef.current = null;
     }
   }
 
-  const target = Number(targetDisplay.replace(/[^\d]/g, "")) || 0;
+  const target = parseNominalInput(targetDisplay);
   const invalidRange = !!from && !!to && from > to;
   const invalidTxRange = !!txFrom && !!txTo && Number(txFrom) > Number(txTo);
   const canDownload = !!from && !!to && !invalidRange && !invalidTxRange;
@@ -157,10 +157,11 @@ export function PrintReportDialog() {
               <span className="text-sm text-muted-foreground">Rp</span>
               <input
                 id="print-target"
-                inputMode="numeric"
-                placeholder="0"
+                inputMode="decimal"
+                placeholder="0,00"
                 value={targetDisplay}
                 onChange={(e) => setTargetDisplay(formatNominalInput(e.target.value))}
+                onBlur={() => setTargetDisplay(formatNominalInput(targetDisplay, { fixedDecimals: true }))}
                 className="w-full bg-transparent py-1.5 font-variant-tabular text-base outline-none"
               />
             </div>

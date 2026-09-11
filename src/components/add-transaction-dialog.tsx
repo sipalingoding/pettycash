@@ -27,7 +27,7 @@ import { PhotoUpload } from "@/components/photo-upload";
 import { addAttachmentAction, createTransactionAction } from "@/lib/actions";
 import { UNCATEGORIZED } from "@/lib/categories";
 import { UNASSIGNED_DIVISION } from "@/lib/divisions";
-import { formatNominalInput, rp } from "@/lib/format";
+import { formatNominalInput, parseNominalInput, rp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function todayIso() {
@@ -61,7 +61,7 @@ export function AddTransactionDialog({
   const [photos, setPhotos] = useState<{ key: string; file: File; previewUrl: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const nominal = Number(nominalDisplay.replace(/[^\d]/g, "")) || 0;
+  const nominal = parseNominalInput(nominalDisplay);
   const preview = type === "masuk" ? currentBalance + nominal : currentBalance - nominal;
 
   function reset() {
@@ -226,10 +226,11 @@ export function AddTransactionDialog({
               <span className="text-sm text-muted-foreground">Rp</span>
               <input
                 id="tx-nominal"
-                inputMode="numeric"
-                placeholder="0"
+                inputMode="decimal"
+                placeholder="0,00"
                 value={nominalDisplay}
                 onChange={(e) => setNominalDisplay(formatNominalInput(e.target.value))}
+                onBlur={() => setNominalDisplay(formatNominalInput(nominalDisplay, { fixedDecimals: true }))}
                 className="w-full bg-transparent py-1.5 font-variant-tabular text-base outline-none"
               />
             </div>

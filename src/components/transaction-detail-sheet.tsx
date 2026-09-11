@@ -39,7 +39,7 @@ import {
 import { attachmentFilename } from "@/lib/attachment";
 import { categoryColor } from "@/lib/categories";
 import { divisionColor } from "@/lib/divisions";
-import { formatNominalInput, rp, tglPanjang } from "@/lib/format";
+import { formatNominalInput, parseNominalInput, rp, tglPanjang } from "@/lib/format";
 import type { TransactionWithAttachments } from "@/db/queries";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +69,9 @@ export function TransactionDetailSheet({
   const [category, setCategory] = useState(tx.category);
   const [division, setDivision] = useState(tx.division);
   const [type, setType] = useState<"masuk" | "keluar">(txType);
-  const [nominalDisplay, setNominalDisplay] = useState(txNominal.toLocaleString("id-ID"));
+  const [nominalDisplay, setNominalDisplay] = useState(
+    formatNominalInput(String(txNominal), { fixedDecimals: true })
+  );
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState(tx.attachments);
   const [removingIds, setRemovingIds] = useState<number[]>([]);
@@ -87,7 +89,7 @@ export function TransactionDetailSheet({
       setCategory(tx.category);
       setDivision(tx.division);
       setType(txType);
-      setNominalDisplay(txNominal.toLocaleString("id-ID"));
+      setNominalDisplay(formatNominalInput(String(txNominal), { fixedDecimals: true }));
       setError(null);
       setAttachments(tx.attachments);
       setRemovingIds([]);
@@ -120,7 +122,7 @@ export function TransactionDetailSheet({
 
   function handleSave() {
     setError(null);
-    const nominal = Number(nominalDisplay.replace(/[^\d]/g, "")) || 0;
+    const nominal = parseNominalInput(nominalDisplay);
     startTransition(async () => {
       const result = await updateTransactionAction({
         txNo: tx.txNo,
@@ -254,10 +256,11 @@ export function TransactionDetailSheet({
                   <span className="text-sm text-muted-foreground">Rp</span>
                   <input
                     id="edit-nominal"
-                    inputMode="numeric"
-                    placeholder="0"
+                    inputMode="decimal"
+                    placeholder="0,00"
                     value={nominalDisplay}
                     onChange={(e) => setNominalDisplay(formatNominalInput(e.target.value))}
+                    onBlur={() => setNominalDisplay(formatNominalInput(nominalDisplay, { fixedDecimals: true }))}
                     className="w-full bg-transparent py-1.5 font-variant-tabular text-base outline-none"
                   />
                 </div>
