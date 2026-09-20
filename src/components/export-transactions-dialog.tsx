@@ -21,49 +21,56 @@ import { downloadFile } from "@/lib/download-file";
 
 function buildExportHref(
   current: URLSearchParams,
-  from: string,
-  to: string,
-  txFrom: string,
-  txTo: string
+  manual?: { from: string; to: string; txFrom: string; txTo: string },
 ) {
   const params = new URLSearchParams(current);
   params.delete("page");
-  if (from) params.set("from", from);
-  else params.delete("from");
-  if (to) params.set("to", to);
-  else params.delete("to");
-  if (txFrom) params.set("txFrom", txFrom);
-  else params.delete("txFrom");
-  if (txTo) params.set("txTo", txTo);
-  else params.delete("txTo");
+  if (manual) {
+    if (manual.from) params.set("from", manual.from);
+    else params.delete("from");
+    if (manual.to) params.set("to", manual.to);
+    else params.delete("to");
+    if (manual.txFrom) params.set("txFrom", manual.txFrom);
+    else params.delete("txFrom");
+    if (manual.txTo) params.set("txTo", manual.txTo);
+    else params.delete("txTo");
+  }
   const qs = params.toString();
   return qs ? `/api/export?${qs}` : "/api/export";
 }
 
+function hasTransactionFilter(searchParams: URLSearchParams) {
+  const type = searchParams.get("type");
+  return (
+    !!searchParams.get("q") ||
+    !!searchParams.get("from") ||
+    !!searchParams.get("to") ||
+    !!searchParams.get("txFrom") ||
+    !!searchParams.get("txTo") ||
+    (searchParams.get("cat") ?? "Semua") !== "Semua" ||
+    (searchParams.get("div") ?? "Semua") !== "Semua" ||
+    (searchParams.get("year") ?? "Semua") !== "Semua" ||
+    type === "masuk" ||
+    type === "keluar"
+  );
+}
+
 export function ExportTransactionsDialog() {
   const searchParams = useSearchParams();
-  const urlFrom = searchParams.get("from") ?? "";
-  const urlTo = searchParams.get("to") ?? "";
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [from, setFrom] = useState(urlFrom);
-  const [to, setTo] = useState(urlTo);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [txFrom, setTxFrom] = useState("");
   const [txTo, setTxTo] = useState("");
 
-  // Seed the date range from the page's active Tanggal filter (if any) whenever this
-  // dialog is (re)opened — adjusted during render, not in an effect, per
-  // https://react.dev/learn/you-might-not-need-an-effect
-  const [syncedOpen, setSyncedOpen] = useState(open);
-  if (syncedOpen !== open) {
-    setSyncedOpen(open);
-    if (open) {
-      setFrom(urlFrom);
-      setTo(urlTo);
-      setTxFrom("");
-      setTxTo("");
-    }
-  }
+  const filtered = hasTransactionFilter(searchParams);
+  const invalidRange = !!from && !!to && from > to;
+  const invalidTxRange = !!txFrom && !!txTo && Number(txFrom) > Number(txTo);
+  const canDownload = !invalidRange && !invalidTxRange;
+  const href = filtered
+    ? buildExportHref(searchParams)
+    : buildExportHref(searchParams, { from, to, txFrom, txTo });
 
   function reset() {
     setFrom("");
@@ -71,11 +78,6 @@ export function ExportTransactionsDialog() {
     setTxFrom("");
     setTxTo("");
   }
-
-  const invalidRange = !!from && !!to && from > to;
-  const invalidTxRange = !!txFrom && !!txTo && Number(txFrom) > Number(txTo);
-  const canDownload = !invalidRange && !invalidTxRange;
-  const href = buildExportHref(searchParams, from, to, txFrom, txTo);
 
   function handleDownload() {
     if (!canDownload) return;
@@ -87,6 +89,21 @@ export function ExportTransactionsDialog() {
         toast.error(err instanceof Error ? err.message : "Gagal mengunduh CSV.");
       }
     });
+  }
+
+  if (filtered) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownload}
+        disabled={pending}
+        title="Unduh CSV sesuai filter aktif"
+      >
+        {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+        {pending ? "Menyiapkan…" : "CSV"}
+      </Button>
+    );
   }
 
   return (
@@ -109,8 +126,7 @@ export function ExportTransactionsDialog() {
         <DialogHeader>
           <DialogTitle className="font-heading text-xl">Ekspor Transaksi</DialogTitle>
           <DialogDescription>
-            Kosongkan tanggal untuk mengekspor semua data. Filter pencarian, kategori, divisi,
-            jenis, dan tahun yang sedang aktif di halaman ini tetap berlaku.
+            Kosongkan tanggal dan nomor transaksi untuk mengekspor semua data.
           </DialogDescription>
         </DialogHeader>
 

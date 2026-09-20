@@ -9,6 +9,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
   const cat = searchParams.get("cat") ?? "Semua";
+  const div = searchParams.get("div") ?? "Semua";
+  const typeParam = searchParams.get("type");
+  const type = typeParam === "masuk" || typeParam === "keluar" ? typeParam : undefined;
   const year = searchParams.get("year") ?? "Semua";
   const dateFrom = searchParams.get("from") ?? "";
   const dateTo = searchParams.get("to") ?? "";
@@ -16,8 +19,9 @@ export async function GET(request: Request) {
   const txToRaw = searchParams.get("txTo");
   const txNoFrom = txFromRaw ? Number(txFromRaw) : undefined;
   const txNoTo = txToRaw ? Number(txToRaw) : undefined;
-  const sort = (searchParams.get("sort") as "date" | "amountOut") ?? "date";
-  const dir = (searchParams.get("dir") as "asc" | "desc") ?? "desc";
+  const sortParam = searchParams.get("sort");
+  const sort = sortParam === "amountOut" ? "amountOut" : "date";
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc";
 
   const agg = await getAggregates(year);
   const topCategories = agg.categories.slice(0, 6).map((c) => c.category);
@@ -26,6 +30,8 @@ export async function GET(request: Request) {
     search: q,
     category: cat,
     topCategories,
+    division: div,
+    type,
     year,
     dateFrom,
     dateTo,
