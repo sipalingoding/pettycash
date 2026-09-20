@@ -17,7 +17,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const data = await getReportData(from, to, txNoFrom, txNoTo);
+    const data = await getReportData(from, to, txNoFrom, txNoTo, {
+      includeAttachments: false,
+    });
     const buffer = await buildKasKecilWorkbook(data, from, to, targetFloat);
 
     return new NextResponse(buffer, {

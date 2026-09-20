@@ -308,6 +308,12 @@ export type ReportData = {
   }[];
 };
 
+type ReportDataOptions = {
+  includeAttachments?: boolean;
+};
+
+const REPORT_ATTACHMENT_URL_BATCH_SIZE = 6;
+
 /** Chronological ledger slice for the "Laporan Kas Kecil" print/export, with the running
  * balance carried in from just before the first included row so the report's Saldo column
  * stays absolute even when `txNoFrom`/`txNoTo` narrows the rows further within the date range. */
@@ -316,7 +322,9 @@ export async function getReportData(
   dateTo?: string,
   txNoFrom?: number,
   txNoTo?: number,
+  options: ReportDataOptions = {},
 ): Promise<ReportData> {
+  const { includeAttachments = true } = options;
   const conditions = [];
   if (dateFrom) conditions.push(gte(transactions.date, dateFrom));
   if (dateTo) conditions.push(lte(transactions.date, dateTo));
@@ -340,24 +348,10 @@ export async function getReportData(
     .where(where)
     .orderBy(asc(transactions.date), asc(transactions.txNo));
 
-  let attachments: ReportData["attachments"] = [];
-  if (rows.length > 0) {
-    const transactionIds = rows.map((r) => r.id);
-    attachments = await db
-      .select({
-        id: transactionAttachments.id,
-        url: transactionAttachments.url,
-        transactionId: transactionAttachments.transactionId,
-        transactionDescription: transactions.description,
-      })
-      .from(transactionAttachments)
-      .innerJoin(
-        transactions,
-        eq(transactions.id, transactionAttachments.transactionId),
-      )
-      .where(inArray(transactionAttachments.transactionId, transactionIds))
-      .orderBy(asc(transactionAttachments.id));
-  }
+  const attachments =
+    includeAttachments && rows.length > 0
+      ? await getReportAttachments(rows)
+      : [];
 
   let openingBalance = 0;
   if (rows.length) {
@@ -386,6 +380,57 @@ export async function getReportData(
     : openingBalance;
 
   return { openingBalance, rows, closingBalance, attachments };
+}
+
+async function getReportAttachments(
+  rows: ReportRow[],
+): Promise<ReportData["attachments"]> {
+  const transactionIds = rows.map((r) => r.id);
+  const descriptionByTransactionId = new Map(
+    rows.map((r) => [r.id, r.description]),
+  );
+
+  const attachmentRows = await db
+    .select({
+      id: transactionAttachments.id,
+      transactionId: transactionAttachments.transactionId,
+    })
+    .from(transactionAttachments)
+    .where(inArray(transactionAttachments.transactionId, transactionIds))
+    .orderBy(asc(transactionAttachments.id));
+
+  const attachmentsById = new Map<number, ReportData["attachments"][number]>();
+  for (let i = 0; i < attachmentRows.length; i += REPORT_ATTACHMENT_URL_BATCH_SIZE) {
+    const batch = attachmentRows.slice(i, i + REPORT_ATTACHMENT_URL_BATCH_SIZE);
+    const urlRows = await db
+      .select({
+        id: transactionAttachments.id,
+        url: transactionAttachments.url,
+      })
+      .from(transactionAttachments)
+      .where(
+        inArray(
+          transactionAttachments.id,
+          batch.map((r) => r.id),
+        ),
+      );
+
+    for (const urlRow of urlRows) {
+      const meta = batch.find((r) => r.id === urlRow.id);
+      if (!meta) continue;
+      attachmentsById.set(urlRow.id, {
+        id: urlRow.id,
+        url: urlRow.url,
+        transactionId: meta.transactionId,
+        transactionDescription:
+          descriptionByTransactionId.get(meta.transactionId) ?? null,
+      });
+    }
+  }
+
+  return attachmentRows
+    .map((row) => attachmentsById.get(row.id))
+    .filter((row): row is ReportData["attachments"][number] => Boolean(row));
 }
 
 export type DivisionStat = { id: number; name: string; count: number };
