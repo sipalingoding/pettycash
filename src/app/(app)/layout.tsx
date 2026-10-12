@@ -1,14 +1,18 @@
 import { DecorBackground } from "@/components/decor-background";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { UserMenu } from "@/components/user-menu";
-import { getAggregates, getDivisionNames } from "@/db/queries";
+import { getAggregates, getCoaOptions, getDivisionNames } from "@/db/queries";
 
 // This whole subtree reads live data on every request — never prerender it at build time,
 // since a build environment typically won't have DATABASE_URL configured yet.
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const [agg, divisionNames] = await Promise.all([getAggregates(), getDivisionNames()]);
+  const [agg, divisionNames, coaOptions] = await Promise.all([
+    getAggregates(),
+    getDivisionNames(),
+    getCoaOptions(),
+  ]);
 
   return (
     <div className="relative flex min-h-screen flex-col md:flex-row">
@@ -17,6 +21,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         transactionCount={agg.count}
         categoryCount={agg.categories.length}
         divisionCount={divisionNames.length}
+        coaCount={coaOptions.length}
         balance={agg.currentBalance}
       />
       <UserMenu />

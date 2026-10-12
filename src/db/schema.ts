@@ -19,6 +19,8 @@ export const transactions = pgTable(
     description: text("description").notNull().default(""),
     category: text("category").notNull().default("Tanpa Kategori"),
     division: text("division").notNull().default("Tanpa Divisi"),
+    // kode akun COA, mis. "6200.21"; null untuk transaksi lama / tanpa COA
+    coa: text("coa"),
     amountIn: numeric("amount_in", { precision: 14, scale: 2, mode: "number" })
       .notNull()
       .default(0),
@@ -77,3 +79,14 @@ export const divisions = pgTable("divisions", {
 
 export type Division = typeof divisions.$inferSelect;
 export type NewDivision = typeof divisions.$inferInsert;
+
+export const coaAccounts = pgTable("coa_accounts", {
+  id: serial("id").primaryKey(),
+  // transactions.coa stores this code
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type CoaAccount = typeof coaAccounts.$inferSelect;
+export type NewCoaAccount = typeof coaAccounts.$inferInsert;

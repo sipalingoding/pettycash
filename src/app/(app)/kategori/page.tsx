@@ -5,15 +5,16 @@ import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { AddCategoryDialog } from "@/components/add-category-dialog";
 import { DeleteCategoryButton } from "@/components/delete-category-dialog";
 import { Card } from "@/components/ui/card";
-import { getAggregates, getCategoryNames, getDivisionNames } from "@/db/queries";
+import { getAggregates, getCategoryNames, getDivisionNames, getCoaOptions } from "@/db/queries";
 import { categoryColor, UNCATEGORIZED } from "@/lib/categories";
 import { rp, fmtCount } from "@/lib/format";
 
 export default async function KategoriPage() {
-  const [agg, categoryOptions, divisionOptions] = await Promise.all([
+  const [agg, categoryOptions, divisionOptions, coaOptions] = await Promise.all([
     getAggregates(),
     getCategoryNames(),
     getDivisionNames(),
+    getCoaOptions(),
   ]);
   const uncategorized = agg.categories.find((c) => c.category === UNCATEGORIZED);
 
@@ -35,6 +36,7 @@ export default async function KategoriPage() {
           currentBalance={agg.currentBalance}
           categoryOptions={categoryOptions}
           divisionOptions={divisionOptions}
+          coaOptions={coaOptions}
         />
       </PageHeader>
 

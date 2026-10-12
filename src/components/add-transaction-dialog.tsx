@@ -26,6 +26,7 @@ import {
 import { PhotoUpload } from "@/components/photo-upload";
 import { addAttachmentAction, createTransactionAction } from "@/lib/actions";
 import { UNCATEGORIZED } from "@/lib/categories";
+import { coaLabel, type CoaOption } from "@/lib/coa";
 import { UNASSIGNED_DIVISION } from "@/lib/divisions";
 import { formatNominalInput, parseNominalInput, rp } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function AddTransactionDialog({
   currentBalance,
   categoryOptions,
   divisionOptions,
+  coaOptions,
   insertAfterTxNo,
   triggerVariant = "default",
   triggerTitle,
@@ -45,6 +47,7 @@ export function AddTransactionDialog({
   currentBalance: number;
   categoryOptions: string[];
   divisionOptions: string[];
+  coaOptions: CoaOption[];
   insertAfterTxNo?: number;
   triggerVariant?: "default" | "inline" | "icon";
   triggerTitle?: string;
@@ -55,6 +58,7 @@ export function AddTransactionDialog({
   const [date, setDate] = useState(todayIso());
   const [category, setCategory] = useState<string>(categoryOptions[0] ?? UNCATEGORIZED);
   const [division, setDivision] = useState<string>(divisionOptions[0] ?? UNASSIGNED_DIVISION);
+  const [coa, setCoa] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"masuk" | "keluar">("keluar");
   const [nominalDisplay, setNominalDisplay] = useState("");
@@ -68,6 +72,7 @@ export function AddTransactionDialog({
     setDate(todayIso());
     setCategory(categoryOptions[0] ?? UNCATEGORIZED);
     setDivision(divisionOptions[0] ?? UNASSIGNED_DIVISION);
+    setCoa(null);
     setDescription("");
     setType("keluar");
     setNominalDisplay("");
@@ -86,6 +91,7 @@ export function AddTransactionDialog({
         description,
         category,
         division,
+        coa,
         type,
         nominal,
         insertAfterTxNo,
@@ -174,7 +180,7 @@ export function AddTransactionDialog({
             </Select>
           </div>
 
-          <div className="grid gap-1.5 sm:col-span-2">
+          <div className="grid gap-1.5">
             <Label htmlFor="tx-division">Divisi</Label>
             <Select value={division} onValueChange={(value) => value && setDivision(value)}>
               <SelectTrigger id="tx-division" className="w-full">
@@ -184,6 +190,24 @@ export function AddTransactionDialog({
                 {divisionOptions.map((d) => (
                   <SelectItem key={d} value={d}>
                     {d}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="tx-coa">COA</Label>
+            <Select value={coa} onValueChange={(value) => setCoa(value)}>
+              <SelectTrigger id="tx-coa" className="w-full">
+                <SelectValue placeholder="Pilih COA">
+                  {(value: string | null) => (value ? coaLabel(coaOptions, value) : "Pilih COA")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {coaOptions.map((a) => (
+                  <SelectItem key={a.code} value={a.code}>
+                    {a.code} - {a.name}
                   </SelectItem>
                 ))}
               </SelectContent>

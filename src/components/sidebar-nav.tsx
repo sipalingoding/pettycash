@@ -9,6 +9,7 @@ import {
   BarChart3,
   Tags,
   Building2,
+  BookText,
   TrendingUp,
   Leaf,
   Menu,
@@ -23,17 +24,20 @@ const NAV_ITEMS = [
   { href: "/laporan", label: "Laporan Bulanan", icon: BarChart3 },
   { href: "/kategori", label: "Kategori", icon: Tags, badgeKey: "categories" as const },
   { href: "/divisi", label: "Divisi", icon: Building2, badgeKey: "divisions" as const },
+  { href: "/coa", label: "COA", icon: BookText, badgeKey: "coa" as const },
 ];
 
 export function SidebarNav({
   transactionCount,
   categoryCount,
   divisionCount,
+  coaCount,
   balance,
 }: {
   transactionCount: number;
   categoryCount: number;
   divisionCount: number;
+  coaCount: number;
   balance: number;
 }) {
   const pathname = usePathname();
@@ -72,6 +76,7 @@ export function SidebarNav({
     count: fmtCount(transactionCount),
     categories: fmtCount(categoryCount),
     divisions: fmtCount(divisionCount),
+    coa: fmtCount(coaCount),
   };
 
   const brand = (

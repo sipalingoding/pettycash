@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   const q = searchParams.get("q") ?? "";
   const cat = searchParams.get("cat") ?? "Semua";
   const div = searchParams.get("div") ?? "Semua";
+  const coa = searchParams.get("coa") ?? "Semua";
   const typeParam = searchParams.get("type");
   const type = typeParam === "masuk" || typeParam === "keluar" ? typeParam : undefined;
   const year = searchParams.get("year") ?? "Semua";
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
     category: cat,
     topCategories,
     division: div,
+    coa,
     type,
     year,
     dateFrom,

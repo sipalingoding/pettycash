@@ -4,15 +4,16 @@ import { AddDivisionDialog } from "@/components/add-division-dialog";
 import { EditDivisionDialog } from "@/components/edit-division-dialog";
 import { DeleteDivisionButton } from "@/components/delete-division-dialog";
 import { Card } from "@/components/ui/card";
-import { getAggregates, getCategoryNames, getDivisionStats } from "@/db/queries";
+import { getAggregates, getCategoryNames, getDivisionStats, getCoaOptions } from "@/db/queries";
 import { divisionColor, UNASSIGNED_DIVISION } from "@/lib/divisions";
 import { fmtCount } from "@/lib/format";
 
 export default async function DivisiPage() {
-  const [agg, categoryOptions, stats] = await Promise.all([
+  const [agg, categoryOptions, stats, coaOptions] = await Promise.all([
     getAggregates(),
     getCategoryNames(),
     getDivisionStats(),
+    getCoaOptions(),
   ]);
   const divisionOptions = stats.map((d) => d.name);
   const named = stats.filter((d) => d.name !== UNASSIGNED_DIVISION);
@@ -25,6 +26,7 @@ export default async function DivisiPage() {
           currentBalance={agg.currentBalance}
           categoryOptions={categoryOptions}
           divisionOptions={divisionOptions}
+          coaOptions={coaOptions}
         />
       </PageHeader>
 

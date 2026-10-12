@@ -15,6 +15,7 @@ import {
   getCurrentBalance,
   getDivisionNames,
   getTransactions,
+  getCoaOptions,
 } from "@/db/queries";
 import { fmtCount } from "@/lib/format";
 
@@ -29,6 +30,7 @@ export default async function TransaksiPage({
   const q = typeof sp.q === "string" ? sp.q : "";
   const cat = typeof sp.cat === "string" ? sp.cat : "Semua";
   const div = typeof sp.div === "string" ? sp.div : "Semua";
+  const coa = typeof sp.coa === "string" ? sp.coa : "Semua";
   const type = sp.type === "masuk" || sp.type === "keluar" ? sp.type : undefined;
   const dateFrom = typeof sp.from === "string" ? sp.from : "";
   const dateTo = typeof sp.to === "string" ? sp.to : "";
@@ -37,12 +39,13 @@ export default async function TransaksiPage({
   const dir = sp.dir === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number(sp.page) || 1);
 
-  const [agg, categoryOptions, divisionOptions, years, currentBalance] = await Promise.all([
+  const [agg, categoryOptions, divisionOptions, years, currentBalance, coaOptions] = await Promise.all([
     getAggregates(year),
     getCategoryNames(),
     getDivisionNames(),
     getAvailableYears(),
     getCurrentBalance(),
+    getCoaOptions(),
   ]);
   const topCategories = agg.categories.slice(0, 6).map((c) => c.category);
 
@@ -51,6 +54,7 @@ export default async function TransaksiPage({
     category: cat,
     topCategories,
     division: div,
+    coa,
     type,
     year,
     dateFrom,
@@ -69,6 +73,7 @@ export default async function TransaksiPage({
   if (q) baseParams.q = q;
   if (cat !== "Semua") baseParams.cat = cat;
   if (div !== "Semua") baseParams.div = div;
+  if (coa !== "Semua") baseParams.coa = coa;
   if (type) baseParams.type = type;
   if (dateFrom) baseParams.from = dateFrom;
   if (dateTo) baseParams.to = dateTo;
@@ -85,17 +90,23 @@ export default async function TransaksiPage({
           currentBalance={currentBalance}
           categoryOptions={categoryOptions}
           divisionOptions={divisionOptions}
+          coaOptions={coaOptions}
         />
       </PageHeader>
 
       <Card className="gap-0 overflow-hidden rounded-[22px] border-border py-0">
-        <TransactionToolbar categoryOptions={categoryOptions} divisionOptions={divisionOptions} />
+        <TransactionToolbar
+          categoryOptions={categoryOptions}
+          divisionOptions={divisionOptions}
+          coaOptions={coaOptions}
+        />
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[1160px]">
+          <Table className="min-w-[1260px]">
             <TableHeader>
               <TableRow className="bg-muted/60 hover:bg-muted/60">
                 <TableHead className="w-14">No</TableHead>
+                <TableHead className="w-24">COA</TableHead>
                 <TableHead className="w-24">
                   <SortableHeader field="date" label="Tanggal" />
                 </TableHead>
@@ -114,7 +125,7 @@ export default async function TransaksiPage({
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-14 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={11} className="py-14 text-center text-sm text-muted-foreground">
                     Tidak ada transaksi yang cocok dengan pencarian atau filter ini.
                   </TableCell>
                 </TableRow>
@@ -125,6 +136,7 @@ export default async function TransaksiPage({
                     tx={tx}
                     categoryOptions={categoryOptions}
                     divisionOptions={divisionOptions}
+                    coaOptions={coaOptions}
                   />
                 ))
               )}

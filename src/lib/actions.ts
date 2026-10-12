@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { categories, divisions, transactionAttachments, transactions } from "@/db/schema";
+import { categories, coaAccounts, divisions, transactionAttachments, transactions } from "@/db/schema";
 import type { TransactionAttachment } from "@/db/schema";
 import { getCurrentBalance, getNextTxNo, getTransactionByNo } from "@/db/queries";
 import { MAX_ATTACHMENT_SIZE } from "@/lib/attachment";
@@ -56,6 +56,7 @@ function revalidateAll() {
   revalidatePath("/laporan");
   revalidatePath("/kategori");
   revalidatePath("/divisi");
+  revalidatePath("/coa");
 }
 
 export type CreateTransactionInput = {
@@ -63,6 +64,7 @@ export type CreateTransactionInput = {
   description: string;
   category: string;
   division: string;
+  coa: string | null;
   type: "masuk" | "keluar";
   nominal: number;
   insertAfterTxNo?: number;
@@ -84,6 +86,15 @@ export async function createTransactionAction(
 
   const category = input.category.trim() || UNCATEGORIZED;
   const division = input.division.trim() || UNASSIGNED_DIVISION;
+  const coa = input.coa || null;
+  if (coa !== null) {
+    const [account] = await db
+      .select({ code: coaAccounts.code })
+      .from(coaAccounts)
+      .where(eq(coaAccounts.code, coa))
+      .limit(1);
+    if (!account) return { ok: false, error: "COA tidak ditemukan." };
+  }
   const insertAfterTxNo = input.insertAfterTxNo;
   if (insertAfterTxNo !== undefined && (!Number.isInteger(insertAfterTxNo) || insertAfterTxNo < 1)) {
     return { ok: false, error: "Posisi sisip transaksi tidak valid." };
@@ -113,6 +124,7 @@ export async function createTransactionAction(
     description,
     category,
     division,
+    coa,
     amountIn: input.type === "masuk" ? input.nominal : 0,
     amountOut: input.type === "keluar" ? input.nominal : 0,
     balance: newBalance,
@@ -316,6 +328,60 @@ export async function editDivisionAction(id: number, name: string): Promise<Acti
   await db.update(divisions).set({ name: trimmed }).where(eq(divisions.id, id));
   await db.update(transactions).set({ division: trimmed }).where(eq(transactions.division, current.name));
 
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function addCoaAction(code: string, name: string): Promise<ActionResult> {
+  const trimmedCode = code.trim();
+  const trimmedName = name.trim();
+  if (!trimmedCode) return { ok: false, error: "Kode COA wajib diisi." };
+  if (!trimmedName) return { ok: false, error: "Nama COA wajib diisi." };
+
+  const [existing] = await db
+    .select({ code: coaAccounts.code })
+    .from(coaAccounts)
+    .where(eq(coaAccounts.code, trimmedCode))
+    .limit(1);
+  if (existing) return { ok: false, error: "Kode COA ini sudah ada." };
+
+  await db.insert(coaAccounts).values({ code: trimmedCode, name: trimmedName });
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function editCoaAction(id: number, code: string, name: string): Promise<ActionResult> {
+  const trimmedCode = code.trim();
+  const trimmedName = name.trim();
+  if (!trimmedCode) return { ok: false, error: "Kode COA wajib diisi." };
+  if (!trimmedName) return { ok: false, error: "Nama COA wajib diisi." };
+
+  const [current] = await db.select().from(coaAccounts).where(eq(coaAccounts.id, id)).limit(1);
+  if (!current) return { ok: false, error: "COA tidak ditemukan." };
+
+  if (current.code !== trimmedCode) {
+    const [clash] = await db
+      .select({ code: coaAccounts.code })
+      .from(coaAccounts)
+      .where(eq(coaAccounts.code, trimmedCode))
+      .limit(1);
+    if (clash) return { ok: false, error: "Kode COA ini sudah ada." };
+  }
+
+  await db
+    .update(coaAccounts)
+    .set({ code: trimmedCode, name: trimmedName })
+    .where(eq(coaAccounts.id, id));
+  if (current.code !== trimmedCode) {
+    await db.update(transactions).set({ coa: trimmedCode }).where(eq(transactions.coa, current.code));
+  }
+
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function deleteCoaAction(id: number): Promise<ActionResult> {
+  await db.delete(coaAccounts).where(eq(coaAccounts.id, id));
   revalidateAll();
   return { ok: true };
 }

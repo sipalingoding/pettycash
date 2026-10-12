@@ -49,6 +49,7 @@ function hasTransactionFilter(searchParams: URLSearchParams) {
     !!searchParams.get("txTo") ||
     (searchParams.get("cat") ?? "Semua") !== "Semua" ||
     (searchParams.get("div") ?? "Semua") !== "Semua" ||
+    (searchParams.get("coa") ?? "Semua") !== "Semua" ||
     (searchParams.get("year") ?? "Semua") !== "Semua" ||
     type === "masuk" ||
     type === "keluar"

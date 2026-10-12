@@ -9,6 +9,7 @@ import {
   getCategoryNames,
   getCurrentBalance,
   getDivisionNames,
+  getCoaOptions,
 } from "@/db/queries";
 import { rp, signedRp, fmtCount, monthLong } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -21,12 +22,13 @@ export default async function LaporanPage({
   const sp = await searchParams;
   const year = typeof sp.year === "string" ? sp.year : "Semua";
 
-  const [agg, categoryOptions, divisionOptions, years, currentBalance] = await Promise.all([
+  const [agg, categoryOptions, divisionOptions, years, currentBalance, coaOptions] = await Promise.all([
     getAggregates(year),
     getCategoryNames(),
     getDivisionNames(),
     getAvailableYears(),
     getCurrentBalance(),
+    getCoaOptions(),
   ]);
   const totalSelisih = agg.totalIn - agg.totalOut;
   const periodLabel = agg.months.length
@@ -41,6 +43,7 @@ export default async function LaporanPage({
           currentBalance={currentBalance}
           categoryOptions={categoryOptions}
           divisionOptions={divisionOptions}
+          coaOptions={coaOptions}
         />
       </PageHeader>
 

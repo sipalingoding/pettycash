@@ -47,30 +47,33 @@ const styles = StyleSheet.create({
   titleLine: { fontSize: 11 },
   table: {
     border: `0.75pt solid ${BORDER}`,
+    // 9 columns on portrait A4 — smaller type keeps amounts like 30.000.000,00 on one line
+    fontSize: 8,
   },
   row: {
     flexDirection: "row",
     borderBottom: `0.75pt solid ${BORDER}`,
   },
   headCell: {
-    padding: 4,
+    padding: 3,
     borderRight: `0.75pt solid ${BORDER}`,
     textAlign: "center",
     fontWeight: 700,
   },
   cell: {
-    padding: 4,
+    padding: 3,
     borderRight: `0.75pt solid ${BORDER}`,
     justifyContent: "center",
   },
   colNo: { width: "4%" },
-  colDate: { width: "9%" },
-  colDesc: { width: "32%" },
-  colCategory: { width: "13%" },
-  colDivision: { width: "10%" },
-  colDebit: { width: "10%" },
-  colKredit: { width: "10%" },
-  colSaldo: { width: "12%", borderRight: "none" },
+  colCoa: { width: "8.5%" },
+  colDate: { width: "9.5%" },
+  colDesc: { width: "20%" },
+  colCategory: { width: "11%" },
+  colDivision: { width: "11%" },
+  colDebit: { width: "11.5%" },
+  colKredit: { width: "11.5%" },
+  colSaldo: { width: "13%", borderRight: "none" },
   right: { textAlign: "right" },
   center: { textAlign: "center" },
   footer: {
@@ -130,7 +133,7 @@ export function KasKecilReportDocument({
 
   return (
     <Document>
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      <Page size="A4" style={styles.page}>
         <View style={styles.frame}>
           <View style={styles.headerRow}>
             <Text style={styles.headerLabel}>Nama</Text>
@@ -157,6 +160,7 @@ export function KasKecilReportDocument({
           <View style={styles.table}>
             <View style={styles.row}>
               <Text style={[styles.headCell, styles.colNo]}>No</Text>
+              <Text style={[styles.headCell, styles.colCoa]}>COA</Text>
               <Text style={[styles.headCell, styles.colDate]}>Tanggal</Text>
               <Text style={[styles.headCell, styles.colDesc]}>Keterangan</Text>
               <Text style={[styles.headCell, styles.colCategory]}>Kategori</Text>
@@ -168,6 +172,7 @@ export function KasKecilReportDocument({
 
             <View style={styles.row}>
               <View style={[styles.cell, styles.colNo]} />
+              <View style={[styles.cell, styles.colCoa]} />
               <View style={[styles.cell, styles.colDate]} />
               <Text style={[styles.cell, styles.colDesc]}>Sisa Saldo</Text>
               <View style={[styles.cell, styles.colCategory]} />
@@ -183,6 +188,9 @@ export function KasKecilReportDocument({
               <View style={styles.row} key={r.txNo} wrap={false}>
                 <Text style={[styles.cell, styles.colNo, styles.center]}>
                   {i + 1}
+                </Text>
+                <Text style={[styles.cell, styles.colCoa, styles.center]}>
+                  {r.coa || "-"}
                 </Text>
                 <Text style={[styles.cell, styles.colDate, styles.center]}>
                   {reportDate(r.date)}

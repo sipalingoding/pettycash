@@ -20,6 +20,7 @@ import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { TransactionDetailSheet } from "@/components/transaction-detail-sheet";
 import { deleteTransactionAction, getAttachmentsAction } from "@/lib/actions";
 import { categoryColor, UNCATEGORIZED } from "@/lib/categories";
+import { coaLabel, type CoaOption } from "@/lib/coa";
 import { divisionColor } from "@/lib/divisions";
 import { rp, tgl } from "@/lib/format";
 import type { TransactionListRow } from "@/db/queries";
@@ -30,10 +31,12 @@ export function TransactionRow({
   tx,
   categoryOptions,
   divisionOptions,
+  coaOptions,
 }: {
   tx: TransactionListRow;
   categoryOptions: string[];
   divisionOptions: string[];
+  coaOptions: CoaOption[];
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [startInEdit, setStartInEdit] = useState(false);
@@ -67,6 +70,12 @@ export function TransactionRow({
     <>
       <TableRow className="group">
         <TableCell className="text-muted-foreground font-variant-tabular">{tx.txNo}</TableCell>
+        <TableCell
+          className="text-muted-foreground whitespace-nowrap font-variant-tabular"
+          title={tx.coa ? coaLabel(coaOptions, tx.coa) : undefined}
+        >
+          {tx.coa ?? "—"}
+        </TableCell>
         <TableCell className="text-muted-foreground whitespace-nowrap">{tgl(tx.date)}</TableCell>
         <TableCell className="max-w-[280px]">
           <button
@@ -134,6 +143,7 @@ export function TransactionRow({
               currentBalance={tx.balance}
               categoryOptions={categoryOptions}
               divisionOptions={divisionOptions}
+              coaOptions={coaOptions}
               insertAfterTxNo={tx.txNo}
               triggerVariant="icon"
               triggerTitle={`Tambah transaksi di bawah #${tx.txNo}`}

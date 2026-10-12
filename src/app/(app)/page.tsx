@@ -13,6 +13,7 @@ import {
   getCategoryNames,
   getCurrentBalance,
   getDivisionNames,
+  getCoaOptions,
 } from "@/db/queries";
 import { rp, fmtCount, tglPanjang, monthShort } from "@/lib/format";
 
@@ -24,12 +25,13 @@ export default async function DashboardPage({
   const sp = await searchParams;
   const year = typeof sp.year === "string" ? sp.year : "Semua";
 
-  const [agg, categoryOptions, divisionOptions, years, currentBalance] = await Promise.all([
+  const [agg, categoryOptions, divisionOptions, years, currentBalance, coaOptions] = await Promise.all([
     getAggregates(year),
     getCategoryNames(),
     getDivisionNames(),
     getAvailableYears(),
     getCurrentBalance(),
+    getCoaOptions(),
   ]);
   const avgMonthly = agg.months.length ? agg.totalOut / agg.months.length : 0;
   const periodLabel = agg.months.length
@@ -45,6 +47,7 @@ export default async function DashboardPage({
           currentBalance={currentBalance}
           categoryOptions={categoryOptions}
           divisionOptions={divisionOptions}
+          coaOptions={coaOptions}
         />
       </PageHeader>
 

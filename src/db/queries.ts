@@ -1,12 +1,14 @@
-import { and, asc, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, sql } from "drizzle-orm";
 import { db } from "./index";
 import {
   categories,
+  coaAccounts,
   divisions,
   transactionAttachments,
   transactions,
 } from "./schema";
 import type { Transaction, TransactionAttachment } from "./schema";
+import { NO_COA, type CoaOption } from "@/lib/coa";
 
 export type CategoryStat = {
   category: string;
@@ -108,6 +110,7 @@ export type TransactionListParams = {
   category?: string; // "Semua" | "Lainnya" | exact category name
   topCategories?: string[]; // used to resolve "Lainnya"
   division?: string; // "Semua" | exact division name
+  coa?: string; // "Semua" | NO_COA | exact COA code
   type?: "masuk" | "keluar"; // undefined = both
   year?: string; // "Semua" | "YYYY"
   dateFrom?: string; // "YYYY-MM-DD", inclusive
@@ -126,6 +129,7 @@ export async function getTransactions(params: TransactionListParams) {
     category = "Semua",
     topCategories = [],
     division = "Semua",
+    coa = "Semua",
     type,
     year = "Semua",
     dateFrom = "",
@@ -164,6 +168,8 @@ export async function getTransactions(params: TransactionListParams) {
   if (division !== "Semua") {
     conditions.push(eq(transactions.division, division));
   }
+  if (coa === NO_COA) conditions.push(isNull(transactions.coa));
+  else if (coa !== "Semua") conditions.push(eq(transactions.coa, coa));
   if (type === "masuk") conditions.push(sql`${transactions.amountIn} > 0`);
   if (type === "keluar") conditions.push(sql`${transactions.amountOut} > 0`);
   const where = conditions.length ? and(...conditions) : undefined;
@@ -284,6 +290,14 @@ export async function getDivisionNames(): Promise<string[]> {
   return rows.map((r) => r.name).sort((a, b) => a.localeCompare(b, "id"));
 }
 
+/** All COA accounts ordered by code — the source for the transaction form's COA dropdown. */
+export async function getCoaOptions(): Promise<CoaOption[]> {
+  return db
+    .select({ code: coaAccounts.code, name: coaAccounts.name })
+    .from(coaAccounts)
+    .orderBy(asc(coaAccounts.code));
+}
+
 export type ReportRow = {
   id: number;
   txNo: number;
@@ -291,6 +305,7 @@ export type ReportRow = {
   description: string;
   category: string;
   division: string;
+  coa: string | null;
   amountIn: number;
   amountOut: number;
   balance: number;
@@ -340,6 +355,7 @@ export async function getReportData(
       description: transactions.description,
       category: transactions.category,
       division: transactions.division,
+      coa: transactions.coa,
       amountIn: transactions.amountIn,
       amountOut: transactions.amountOut,
       balance: transactions.balance,
@@ -456,4 +472,22 @@ export async function getDivisionStats(): Promise<DivisionStat[]> {
       count: countByName.get(r.name) ?? 0,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "id"));
+}
+
+export type CoaStat = { id: number; code: string; name: string; count: number };
+
+/** COA accounts with their transaction counts, for the COA management page. */
+export async function getCoaStats(): Promise<CoaStat[]> {
+  const [counts, rows] = await Promise.all([
+    db
+      .select({ coa: transactions.coa, count: sql<number>`count(*)::int` })
+      .from(transactions)
+      .groupBy(transactions.coa),
+    db
+      .select({ id: coaAccounts.id, code: coaAccounts.code, name: coaAccounts.name })
+      .from(coaAccounts)
+      .orderBy(asc(coaAccounts.code)),
+  ]);
+  const countByCode = new Map(counts.map((c) => [c.coa, c.count]));
+  return rows.map((r) => ({ ...r, count: countByCode.get(r.code) ?? 0 }));
 }

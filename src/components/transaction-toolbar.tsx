@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
+  BookText,
   Building2,
   CalendarRange,
   Check,
@@ -19,6 +20,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { ExportTransactionsDialog } from "@/components/export-transactions-dialog";
+import { coaLabel, NO_COA, type CoaOption } from "@/lib/coa";
 import { tgl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -204,9 +206,11 @@ function DateRangeDialog({
 export function TransactionToolbar({
   categoryOptions,
   divisionOptions,
+  coaOptions,
 }: {
   categoryOptions: string[];
   divisionOptions: string[];
+  coaOptions: CoaOption[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -215,6 +219,7 @@ export function TransactionToolbar({
 
   const activeCategory = searchParams.get("cat") ?? ALL;
   const activeDivision = searchParams.get("div") ?? ALL;
+  const activeCoa = searchParams.get("coa") ?? ALL;
   const typeParam = searchParams.get("type");
   const activeType = typeParam === "masuk" || typeParam === "keluar" ? typeParam : null;
   const activeFrom = searchParams.get("from") ?? "";
@@ -235,6 +240,7 @@ export function TransactionToolbar({
 
   const [catOpen, setCatOpen] = useState(false);
   const [divOpen, setDivOpen] = useState(false);
+  const [coaOpen, setCoaOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
 
@@ -251,7 +257,7 @@ export function TransactionToolbar({
     debounceRef.current = setTimeout(() => navigate({ q: value || null }), 300);
   }
 
-  const hasActiveFilter = activeCategory !== ALL || activeDivision !== ALL || !!activeType || !!activeFrom || !!activeTo;
+  const hasActiveFilter = activeCategory !== ALL || activeDivision !== ALL || activeCoa !== ALL || !!activeType || !!activeFrom || !!activeTo;
 
   return (
     <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-5 py-4">
@@ -269,6 +275,12 @@ export function TransactionToolbar({
           onClick={() => setDivOpen(true)}
         />
         <FilterButton
+          icon={BookText}
+          label={activeCoa === ALL ? "COA" : activeCoa === NO_COA ? "Tanpa COA" : coaLabel(coaOptions, activeCoa)}
+          active={activeCoa !== ALL}
+          onClick={() => setCoaOpen(true)}
+        />
+        <FilterButton
           icon={ArrowLeftRight}
           label={activeType === "masuk" ? "Pemasukan" : activeType === "keluar" ? "Pengeluaran" : "Jenis"}
           active={!!activeType}
@@ -282,7 +294,7 @@ export function TransactionToolbar({
         />
         {hasActiveFilter && (
           <button
-            onClick={() => navigate({ cat: null, div: null, type: null, from: null, to: null })}
+            onClick={() => navigate({ cat: null, div: null, coa: null, type: null, from: null, to: null })}
             className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-destructive"
             title="Hapus semua filter"
           >
@@ -325,6 +337,19 @@ export function TransactionToolbar({
         value={activeDivision}
         options={[{ value: ALL, label: "Semua divisi" }, ...divisionOptions.map((d) => ({ value: d, label: d }))]}
         onApply={(value) => navigate({ div: value === ALL ? null : value })}
+      />
+
+      <PickerDialog
+        open={coaOpen}
+        onOpenChange={setCoaOpen}
+        title="Filter COA"
+        value={activeCoa}
+        options={[
+          { value: ALL, label: "Semua COA" },
+          { value: NO_COA, label: "Tanpa COA" },
+          ...coaOptions.map((a) => ({ value: a.code, label: `${a.code} - ${a.name}` })),
+        ]}
+        onApply={(value) => navigate({ coa: value === ALL ? null : value })}
       />
 
       <PickerDialog
