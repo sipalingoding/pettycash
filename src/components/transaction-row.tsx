@@ -197,6 +197,7 @@ export function TransactionRow({
         startInEdit={startInEdit}
         categoryOptions={categoryOptions}
         divisionOptions={divisionOptions}
+        coaOptions={coaOptions}
       />
     </>
   );

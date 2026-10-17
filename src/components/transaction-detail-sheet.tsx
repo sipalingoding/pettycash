@@ -38,6 +38,7 @@ import {
 } from "@/lib/actions";
 import { attachmentFilename } from "@/lib/attachment";
 import { categoryColor } from "@/lib/categories";
+import { coaLabel, type CoaOption } from "@/lib/coa";
 import { divisionColor } from "@/lib/divisions";
 import { formatNominalInput, parseNominalInput, rp, tglPanjang } from "@/lib/format";
 import type { TransactionWithAttachments } from "@/db/queries";
@@ -50,6 +51,7 @@ export function TransactionDetailSheet({
   startInEdit = false,
   categoryOptions,
   divisionOptions,
+  coaOptions,
 }: {
   tx: TransactionWithAttachments;
   open: boolean;
@@ -57,6 +59,7 @@ export function TransactionDetailSheet({
   startInEdit?: boolean;
   categoryOptions: string[];
   divisionOptions: string[];
+  coaOptions: CoaOption[];
 }) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(startInEdit);
@@ -68,6 +71,7 @@ export function TransactionDetailSheet({
   const [description, setDescription] = useState(tx.description);
   const [category, setCategory] = useState(tx.category);
   const [division, setDivision] = useState(tx.division);
+  const [coa, setCoa] = useState<string | null>(tx.coa);
   const [type, setType] = useState<"masuk" | "keluar">(txType);
   const [nominalDisplay, setNominalDisplay] = useState(
     formatNominalInput(String(txNominal), { fixedDecimals: true })
@@ -88,6 +92,7 @@ export function TransactionDetailSheet({
       setDescription(tx.description);
       setCategory(tx.category);
       setDivision(tx.division);
+      setCoa(tx.coa);
       setType(txType);
       setNominalDisplay(formatNominalInput(String(txNominal), { fixedDecimals: true }));
       setError(null);
@@ -130,6 +135,7 @@ export function TransactionDetailSheet({
         description,
         category,
         division,
+        coa,
         type,
         nominal,
       });
@@ -214,7 +220,7 @@ export function TransactionDetailSheet({
                 </Select>
               </div>
 
-              <div className="col-span-2 grid gap-1.5">
+              <div className="grid gap-1.5">
                 <Label htmlFor="edit-division">Divisi</Label>
                 <Select value={division} onValueChange={(value) => value && setDivision(value)}>
                   <SelectTrigger id="edit-division" className="w-full">
@@ -224,6 +230,24 @@ export function TransactionDetailSheet({
                     {divisionOptions.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-coa">COA</Label>
+                <Select value={coa} onValueChange={(value) => setCoa(value)}>
+                  <SelectTrigger id="edit-coa" className="w-full">
+                    <SelectValue placeholder="Pilih COA">
+                      {(value: string | null) => (value ? coaLabel(coaOptions, value) : "Pilih COA")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {coaOptions.map((a) => (
+                      <SelectItem key={a.code} value={a.code}>
+                        {a.code} - {a.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -314,6 +338,10 @@ export function TransactionDetailSheet({
                     {tx.division}
                   </Badge>
                 </div>
+              </div>
+              <div className="rounded-2xl bg-muted p-3.5">
+                <div className="text-[11px] text-muted-foreground">COA</div>
+                <div className="mt-1 text-sm">{tx.coa ? coaLabel(coaOptions, tx.coa) : "—"}</div>
               </div>
               <div className="rounded-2xl bg-muted p-3.5">
                 <div className="text-[11px] text-muted-foreground">{jenis}</div>

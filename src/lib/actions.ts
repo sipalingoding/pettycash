@@ -151,6 +151,7 @@ export type UpdateTransactionInput = {
   description?: string;
   category?: string;
   division?: string;
+  coa?: string | null;
   type?: "masuk" | "keluar";
   nominal?: number;
 };
@@ -174,6 +175,18 @@ export async function updateTransactionAction(
   }
   if (input.division !== undefined) {
     patch.division = input.division.trim() || UNASSIGNED_DIVISION;
+  }
+  if (input.coa !== undefined) {
+    const coa = input.coa || null;
+    if (coa !== null) {
+      const [account] = await db
+        .select({ code: coaAccounts.code })
+        .from(coaAccounts)
+        .where(eq(coaAccounts.code, coa))
+        .limit(1);
+      if (!account) return { ok: false, error: "COA tidak ditemukan." };
+    }
+    patch.coa = coa;
   }
 
   // `type`/`nominal` change amount_in/amount_out together, so a partial edit (only one
