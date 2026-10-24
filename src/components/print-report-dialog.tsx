@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { FileSpreadsheet, FileText, Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +16,11 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ReportPreviewDialog, type ReportRequest } from "@/components/report-preview-dialog";
+import { downloadFile } from "@/lib/download-file";
 import { REPORT_CONFIG } from "@/lib/report-config";
 import { formatNominalInput, parseNominalInput } from "@/lib/format";
+import type { AttachmentLayout } from "@/lib/report-layout";
 import { cn } from "@/lib/utils";
 
 type Format = "pdf" | "excel";
@@ -33,6 +37,8 @@ export function PrintReportDialog() {
   const [targetDisplay, setTargetDisplay] = useState(
     formatNominalInput(String(REPORT_CONFIG.defaultTargetFloat), { fixedDecimals: true })
   );
+  // Attachment positions arranged in the preview; also used by "Unduh Laporan" once set.
+  const [layout, setLayout] = useState<AttachmentLayout>({});
 
   function reset() {
     setFrom("");
@@ -41,6 +47,7 @@ export function PrintReportDialog() {
     setTxTo("");
     setFormat("pdf");
     setDownloading(false);
+    setLayout({});
     setTargetDisplay(formatNominalInput(String(REPORT_CONFIG.defaultTargetFloat), { fixedDecimals: true }));
     if (loadingTimerRef.current) {
       clearTimeout(loadingTimerRef.current);
@@ -57,9 +64,32 @@ export function PrintReportDialog() {
   if (txFrom) params.set("txFrom", txFrom);
   if (txTo) params.set("txTo", txTo);
   const href = `/api/print/${format}?${params.toString()}`;
+  const reportRequest: ReportRequest = {
+    from,
+    to,
+    target,
+    txFrom: txFrom ? Number(txFrom) : undefined,
+    txTo: txTo ? Number(txTo) : undefined,
+  };
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!canDownload || downloading) return;
+
+    if (format === "pdf" && Object.keys(layout).length > 0) {
+      setDownloading(true);
+      try {
+        await downloadFile("/api/print/pdf", "laporan-kas-kecil.pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...reportRequest, layout }),
+        });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Gagal mengunduh laporan.");
+      } finally {
+        setDownloading(false);
+      }
+      return;
+    }
 
     setDownloading(true);
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
@@ -199,6 +229,12 @@ export function PrintReportDialog() {
         </div>
 
         <DialogFooter>
+          <ReportPreviewDialog
+            request={reportRequest}
+            disabled={!canDownload || format !== "pdf"}
+            layout={layout}
+            onLayoutChange={setLayout}
+          />
           <Button onClick={handleDownload} disabled={!canDownload || downloading}>
             {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
             {downloading ? "Menyiapkan…" : "Unduh Laporan"}

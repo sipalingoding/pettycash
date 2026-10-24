@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { categories, coaAccounts, divisions, transactionAttachments, transactions } from "@/db/schema";
 import type { TransactionAttachment } from "@/db/schema";
-import { getCurrentBalance, getNextTxNo, getTransactionByNo } from "@/db/queries";
+import { getCurrentBalance, getNextTxNo, getReportData, getTransactionByNo } from "@/db/queries";
 import { MAX_ATTACHMENT_SIZE } from "@/lib/attachment";
 import { UNCATEGORIZED } from "@/lib/categories";
 import { UNASSIGNED_DIVISION } from "@/lib/divisions";
@@ -267,6 +267,20 @@ export async function replaceAttachmentAction(
 
   revalidateAll();
   return { ok: true, attachment };
+}
+
+/** Attachments the report for this range will print, for the preview editor. Images are
+ * loaded separately from `/api/attachments/[id]` to keep this response small. */
+export async function getReportAttachmentsAction(
+  from: string,
+  to: string,
+  txFrom?: number,
+  txTo?: number,
+): Promise<{ id: number; transactionDescription: string | null }[]> {
+  const data = await getReportData(from, to, txFrom, txTo);
+  return data.attachments
+    .filter((att) => att.url)
+    .map(({ id, transactionDescription }) => ({ id, transactionDescription }));
 }
 
 export async function removeAttachmentAction(attachmentId: number): Promise<ActionResult> {

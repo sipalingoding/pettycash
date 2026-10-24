@@ -9,13 +9,20 @@ import {
 import type { ReportData } from "@/db/queries";
 import { REPORT_CONFIG } from "@/lib/report-config";
 import { periodeLabel, reportDate, reportNumber } from "@/lib/report-format";
+import {
+  FRAME_BORDER,
+  FRAME_PADDING,
+  PAGE_PADDING,
+  groupReportAttachments,
+  type AttachmentLayout,
+} from "@/lib/report-layout";
 
 const BORDER = "#9aa5c4";
 const NAVY = "#1a237e";
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    padding: PAGE_PADDING,
     fontSize: 10,
     fontFamily: "Helvetica",
   },
@@ -30,9 +37,11 @@ const styles = StyleSheet.create({
   },
   frame: {
     flex: 1,
-    border: `1.5pt solid ${NAVY}`,
-    padding: 14,
+    border: `${FRAME_BORDER}pt solid ${NAVY}`,
+    padding: FRAME_PADDING,
   },
+  // Unpadded box so absolute image offsets map 1:1 onto the preview editor's canvas.
+  attachmentCanvas: { flex: 1, position: "relative" },
   headerRow: {
     flexDirection: "row",
     marginBottom: 2,
@@ -107,29 +116,21 @@ export function KasKecilReportDocument({
   dateFrom,
   dateTo,
   targetFloat,
+  layout = {},
 }: {
   data: ReportData;
   dateFrom: string;
   dateTo: string;
   targetFloat: number;
+  /** Positions set in the preview editor; pages without a box for every image keep the flow layout. */
+  layout?: AttachmentLayout;
 }) {
   const period = periodeLabel(dateFrom, dateTo);
   const pengisian = targetFloat - data.closingBalance;
 
-  const groupedAttachments =
-    data.attachments?.reduce(
-      (acc, att) => {
-        const desc = att.transactionDescription || "Tanpa Keterangan";
-        if (!acc[desc]) {
-          acc[desc] = [];
-        }
-        acc[desc].push(att);
-        return acc;
-      },
-      {} as Record<string, typeof data.attachments>,
-    ) || {};
-
-  const attachmentGroups = Object.entries(groupedAttachments);
+  const attachmentGroups = groupReportAttachments(
+    data.attachments.filter((att) => att.url),
+  );
 
   return (
     <Document>
@@ -267,40 +268,67 @@ export function KasKecilReportDocument({
           </View>
         </View>
       </Page>
-      {attachmentGroups.map(([description, items], groupIndex) => (
-        <Page key={description + groupIndex} size="A4" style={styles.page}>
-          <View style={styles.frame}>
+      {attachmentGroups.map(({ description, items }, groupIndex) => {
+        const header = (
+          <>
             {/* Judul utama hanya muncul sekali di kelompok/halaman pertama */}
             {groupIndex === 0 && (
               <Text style={styles.headerTitle}>LAMPIRAN BUKTI TRANSAKSI</Text>
             )}
+            <Text
+              style={[
+                styles.caption,
+                { fontSize: 11, fontWeight: "bold", marginBottom: 10, textAlign: "center" },
+              ]}
+            >
+              Lampiran: {description}
+            </Text>
+          </>
+        );
+        const positioned = items.every((att) => layout[att.id]);
 
-            {/* Keterangan yang sama ditampilkan cukup sekali per halaman */}
-            <View style={styles.attachmentContainer}>
-              <Text
-                style={[
-                  styles.caption,
-                  { fontSize: 11, fontWeight: "bold", marginBottom: 10 },
-                ]}
-              >
-                Lampiran: {description}
-              </Text>
-
-              {/* Render semua gambar bukti yang masuk dalam keterangan ini */}
-              {items.map(
-                (att) =>
-                  att.url && (
-                    <Image
-                      key={att.id}
-                      src={att.url}
-                      style={[styles.attachmentImage, { marginBottom: 10 }]}
-                    />
-                  ),
+        return (
+          <Page key={description + groupIndex} size="A4" style={styles.page}>
+            <View style={styles.frame}>
+              {positioned ? (
+                <View style={styles.attachmentCanvas}>
+                  {header}
+                  {items.map((att) => {
+                    const box = layout[att.id];
+                    return (
+                      <Image
+                        key={att.id}
+                        src={att.url}
+                        style={{
+                          position: "absolute",
+                          left: box.x,
+                          top: box.y,
+                          width: box.w,
+                          height: box.h,
+                          objectFit: "contain",
+                        }}
+                      />
+                    );
+                  })}
+                </View>
+              ) : (
+                <>
+                  {header}
+                  <View style={styles.attachmentContainer}>
+                    {items.map((att) => (
+                      <Image
+                        key={att.id}
+                        src={att.url}
+                        style={[styles.attachmentImage, { marginBottom: 10 }]}
+                      />
+                    ))}
+                  </View>
+                </>
               )}
             </View>
-          </View>
-        </Page>
-      ))}
+          </Page>
+        );
+      })}
     </Document>
   );
 }
