@@ -2,7 +2,15 @@
 
 import { useRef, useState, type DragEvent, type ClipboardEvent } from "react";
 import { toast } from "sonner";
-import { Download, ImagePlus, Loader2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Eye, ImagePlus, Loader2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MAX_ATTACHMENT_SIZE } from "@/lib/attachment";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +32,8 @@ export function PhotoUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const previewPhoto = previewIndex !== null ? photos[previewIndex] : undefined;
 
   async function handleFiles(files: File[]) {
     const valid: File[] = [];
@@ -146,16 +156,14 @@ export function PhotoUpload({
                 removing && "opacity-100",
               )}
             >
-              {downloadFilename && (
-                <a
-                  href={photo.url}
-                  download={downloadFilename(photo, index)}
-                  title="Unduh foto"
-                  className="text-white"
-                >
-                  <Download className="size-4" />
-                </a>
-              )}
+              <button
+                type="button"
+                onClick={() => setPreviewIndex(index)}
+                title="Lihat foto"
+                className="text-white"
+              >
+                <Eye className="size-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => onRemove(photo.key)}
@@ -192,6 +200,71 @@ export function PhotoUpload({
           </>
         )}
       </button>
+
+      <Dialog
+        open={previewPhoto !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setPreviewIndex(null);
+        }}
+      >
+        {previewPhoto && previewIndex !== null && (
+          <DialogContent className="sm:max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                Lampiran {previewIndex + 1} dari {photos.length}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="relative flex items-center justify-center overflow-hidden rounded-lg bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPhoto.url}
+                alt={`Lampiran ${previewIndex + 1}`}
+                className="max-h-[70vh] w-auto object-contain"
+              />
+              {photos.length > 1 && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="icon-sm"
+                    className="absolute left-2"
+                    title="Sebelumnya"
+                    onClick={() =>
+                      setPreviewIndex((previewIndex - 1 + photos.length) % photos.length)
+                    }
+                  >
+                    <ChevronLeft />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="icon-sm"
+                    className="absolute right-2"
+                    title="Berikutnya"
+                    onClick={() => setPreviewIndex((previewIndex + 1) % photos.length)}
+                  >
+                    <ChevronRight />
+                  </Button>
+                </>
+              )}
+            </div>
+            {downloadFilename && (
+              <DialogFooter>
+                <Button
+                  render={
+                    <a
+                      href={previewPhoto.url}
+                      download={downloadFilename(previewPhoto, previewIndex)}
+                    />
+                  }
+                  nativeButton={false}
+                >
+                  <Download className="size-3.5" />
+                  Unduh Foto
+                </Button>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }
