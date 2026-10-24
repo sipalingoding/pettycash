@@ -247,6 +247,28 @@ export async function addAttachmentAction(txNo: number, file: File): Promise<Add
   return { ok: true, attachment };
 }
 
+export async function replaceAttachmentAction(
+  attachmentId: number,
+  file: File,
+): Promise<AddAttachmentResult> {
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, error: "File harus berupa gambar." };
+  }
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    return { ok: false, error: "Ukuran file maksimal 5MB." };
+  }
+
+  const [attachment] = await db
+    .update(transactionAttachments)
+    .set({ url: await fileToDataUrl(file) })
+    .where(eq(transactionAttachments.id, attachmentId))
+    .returning();
+  if (!attachment) return { ok: false, error: "Lampiran tidak ditemukan." };
+
+  revalidateAll();
+  return { ok: true, attachment };
+}
+
 export async function removeAttachmentAction(attachmentId: number): Promise<ActionResult> {
   await db.delete(transactionAttachments).where(eq(transactionAttachments.id, attachmentId));
   revalidateAll();

@@ -281,6 +281,15 @@ export function AddTransactionDialog({
                   return prev.filter((p) => p.key !== key);
                 })
               }
+              onReplace={(key, file) =>
+                setPhotos((prev) =>
+                  prev.map((p) => {
+                    if (p.key !== key) return p;
+                    URL.revokeObjectURL(p.previewUrl);
+                    return { key, file, previewUrl: URL.createObjectURL(file) };
+                  }),
+                )
+              }
             />
             <p className="text-xs text-muted-foreground">
               Foto disimpan langsung bersama data transaksi.

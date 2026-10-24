@@ -34,6 +34,7 @@ import {
   addAttachmentAction,
   deleteTransactionAction,
   removeAttachmentAction,
+  replaceAttachmentAction,
   updateTransactionAction,
 } from "@/lib/actions";
 import { attachmentFilename } from "@/lib/attachment";
@@ -110,6 +111,13 @@ export function TransactionDetailSheet({
       }
       setAttachments((prev) => [...prev, result.attachment]);
     }
+  }
+
+  async function handleReplacePhoto(key: string, file: File) {
+    const result = await replaceAttachmentAction(Number(key), file);
+    if (!result.ok) throw new Error(result.error);
+    setAttachments((prev) => prev.map((a) => (a.id === result.attachment.id ? result.attachment : a)));
+    toast.success("Foto dipotong.");
   }
 
   async function handleRemovePhoto(key: string) {
@@ -368,6 +376,7 @@ export function TransactionDetailSheet({
               photos={attachments.map((a): PhotoItem => ({ key: String(a.id), url: a.url }))}
               onAdd={handleAddPhotos}
               onRemove={handleRemovePhoto}
+              onReplace={handleReplacePhoto}
               removingKeys={removingIds.map(String)}
               downloadFilename={(photo, index) =>
                 attachmentFilename(tx.txNo, index + 1, photo.url)
